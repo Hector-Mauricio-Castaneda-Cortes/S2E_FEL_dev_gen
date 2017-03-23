@@ -52,7 +52,7 @@ dgrid	0
 rmax0	9
 ##### Scan parameters (flag 0 if there is no scan) #
 i_scan	   0
-parameter  'aw0'
+parameter  'quadf'
 init	   12
 end	   25
 n_scan	   10
