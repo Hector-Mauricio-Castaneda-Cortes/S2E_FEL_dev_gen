@@ -1,0 +1,58 @@
+###### Output path #################################
+exp_dir	      '/scratch2b/qfi29231/results_dev_single/'
+###### Type of Launcher (Genesis v2 or v3) #########
+genesis_launcher	'genesis2.0'
+###### Statistical runs ############################
+stat_run	   1
+###### GENESIS input file ##########################
+in_gen 0
+gen_filename	gen_input.in
+###### Time dependent flags       ##################
+shotnoise   1
+itdp	    1
+prad0	    1e-12
+###### Beam Energy and wavelength ##################
+xlamds	1.35076e-8
+gamma0	1.46871e3
+###### Undulator design and lattice ################
+xlamd	0.036
+nsec	23
+nwig	58
+aw0	0.7852
+fl	2
+dl	2
+drl	78
+quadf	16
+quadd	-16
+iwityp	1
+xkx	0.5
+xky	0.5
+##### Beam parameters #############################
+i_profile  1
+curlen	2.0944e-5
+curpeak	430
+delgam	1.357
+rxbeam	6.491585e-5
+rybeam	2.95641e-5
+emitx	6.5e-7
+emity	6.5e-7
+alphax	-2.464459e-2
+alphay	-8.971086e-3
+nslice	927
+ntail	-463
+gauss_fl	1
+##### Simulation parameters #######################
+zsep	10
+npart	8192
+ncar	151
+delz	1
+dmpfld	1
+fbess0	0
+dgrid	0
+rmax0	9
+##### Scan parameters (flag 0 if there is no scan) #
+i_scan	   0
+parameter  'aw0'
+init	   12
+end	   25
+n_scan	   10
