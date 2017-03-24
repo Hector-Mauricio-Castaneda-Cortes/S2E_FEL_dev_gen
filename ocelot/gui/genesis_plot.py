@@ -890,7 +890,7 @@ def plot_gen_out_scanned_z(g, figsize=(10, 14), legend=True, fig_name=None, z=in
     return fig
 
 
-def plot_dfl(F, z_lim=[], xy_lim=[], figsize=4, cmap_int='jet', legend=True, phase=False, far_field=False, freq_domain=False, fig_name=None, auto_zoom=False, column_3d=True, savefig=False, showfig=False, return_proj=False, log_scale=0, debug=1, vartype_dfl=complex64):
+def plot_dfl(F, z_lim=[], xy_lim=[], figsize=4, cmap='jet', legend=True, phase=False, far_field=False, freq_domain=False, fig_name=None, auto_zoom=False, column_3d=True, savefig=False, showfig=False, return_proj=False, log_scale=0, debug=1, vartype_dfl=complex64):
     '''
     Plots dfl radiation object in 3d.
 
@@ -1048,7 +1048,7 @@ def plot_dfl(F, z_lim=[], xy_lim=[], figsize=4, cmap_int='jet', legend=True, pha
     fig.clf()
     fig.set_size_inches(((3 + 2 * column_3d) * figsize, 3 * figsize), forward=True)
 
-    # cmap_int = plt.get_cmap('viridis')  # jet inferno viridis #change to convenient
+    # cmap = plt.get_cmap('viridis')  # jet inferno viridis #change to convenient
     cmap_ph = plt.get_cmap('hsv')
 
     x_line = xy_proj[:, int((ncar_y - 1) / 2)]
@@ -1059,9 +1059,9 @@ def plot_dfl(F, z_lim=[], xy_lim=[], figsize=4, cmap_int='jet', legend=True, pha
 
     ax_int = fig.add_subplot(2, 2 + column_3d, 1)
     if log_scale:
-        intplt = ax_int.pcolormesh(x, y, swapaxes(xy_proj, 1, 0), norm=colors.LogNorm(vmin=xy_proj.min(), vmax=xy_proj.max()), cmap=cmap_int)
+        intplt = ax_int.pcolormesh(x, y, swapaxes(xy_proj, 1, 0), norm=colors.LogNorm(vmin=xy_proj.min(), vmax=xy_proj.max()), cmap=cmap)
     else:
-        intplt = ax_int.pcolormesh(x, y, swapaxes(xy_proj, 1, 0), cmap=cmap_int)
+        intplt = ax_int.pcolormesh(x, y, swapaxes(xy_proj, 1, 0), cmap=cmap)
     ax_int.set_title(xy_title, fontsize=15)
     ax_int.set_xlabel(r'' + x_label)
     ax_int.set_ylabel(y_label)
@@ -1089,7 +1089,10 @@ def plot_dfl(F, z_lim=[], xy_lim=[], figsize=4, cmap_int='jet', legend=True, pha
 
     if sum(x_line) != 0:
         x_line_f, rms_x = gauss_fit(x, x_line)  # fit with Gaussian, and return fitted function and rms
-        fwhm_x = fwhm3(x_line)[1] * dx  # measure FWHM
+        try:
+            fwhm_x = fwhm3(x_line)[1] * dx  # measure FWHM
+        except ValueError:
+            fwhm_x = 0
     else:
         x_line_f = np.zeros_like(x_line)
         rms_x = 0
@@ -1115,7 +1118,10 @@ def plot_dfl(F, z_lim=[], xy_lim=[], figsize=4, cmap_int='jet', legend=True, pha
 
     if sum(y_line) != 0:
         y_line_f, rms_y = gauss_fit(y, y_line)  # fit with Gaussian, and return fitted function and rms
-        fwhm_y = fwhm3(y_line)[1] * dy  # measure FWHM
+        try:
+            fwhm_y = fwhm3(y_line)[1] * dy  # measure FWHM
+        except ValueError:
+            fwhm_y = 0
     else:
         y_line_f = np.zeros_like(y_line)
         rms_y = 0
@@ -1158,9 +1164,9 @@ def plot_dfl(F, z_lim=[], xy_lim=[], figsize=4, cmap_int='jet', legend=True, pha
         else:
             ax_proj_xz = fig.add_subplot(2, 2 + column_3d, 6, sharex=ax_z)
         if log_scale:
-            ax_proj_xz.pcolormesh(z, x, swapaxes(xz_proj, 1, 0), norm=colors.LogNorm(vmin=min_xz_proj, vmax=xz_proj.max()), cmap=cmap_int)
+            ax_proj_xz.pcolormesh(z, x, swapaxes(xz_proj, 1, 0), norm=colors.LogNorm(vmin=min_xz_proj, vmax=xz_proj.max()), cmap=cmap)
         else:
-            ax_proj_xz.pcolormesh(z, x, swapaxes(xz_proj, 1, 0), cmap=cmap_int)
+            ax_proj_xz.pcolormesh(z, x, swapaxes(xz_proj, 1, 0), cmap=cmap)
         ax_proj_xz.set_title('Top view', fontsize=15)
         ax_proj_xz.set_xlabel(z_label)
         ax_proj_xz.set_ylabel(x_label)
@@ -1168,9 +1174,9 @@ def plot_dfl(F, z_lim=[], xy_lim=[], figsize=4, cmap_int='jet', legend=True, pha
 
         ax_proj_yz = fig.add_subplot(2, 2 + column_3d, 3, sharey=ax_int, sharex=ax_proj_xz)
         if log_scale:
-            ax_proj_yz.pcolormesh(z, y, swapaxes(yz_proj, 1, 0), norm=colors.LogNorm(vmin=min_yz_proj, vmax=yz_proj.max()), cmap=cmap_int)
+            ax_proj_yz.pcolormesh(z, y, swapaxes(yz_proj, 1, 0), norm=colors.LogNorm(vmin=min_yz_proj, vmax=yz_proj.max()), cmap=cmap)
         else:
-            ax_proj_yz.pcolormesh(z, y, swapaxes(yz_proj, 1, 0), cmap=cmap_int)
+            ax_proj_yz.pcolormesh(z, y, swapaxes(yz_proj, 1, 0), cmap=cmap)
         ax_proj_yz.set_title('Side view', fontsize=15)
         ax_proj_yz.set_xlabel(z_label)
         ax_proj_yz.set_ylabel(y_label)
@@ -1434,7 +1440,12 @@ def plot_gen_stat(proj_dir, run_inp=[], stage_inp=[], param_inp=[], s_param_inp=
                     W.filePath = proj_dir + 'results' + os.path.sep + 'stage_' + str(stage) + '__WIG__' + str(z_ind) + '__m'
                     wig_fig_name = 'stage_' + str(stage) + '__WIG__' + str(z_ind) + '__m'
                     plot_wigner(W, z=z_ind, p_units='um', s_units='eV', fig_name=wig_fig_name, savefig=savefig, debug=0)
-
+                    if saveval != False:
+                        if debug > 1:
+                            print('      saving ' + wig_fig_name + '.txt')
+                        np.savetxt(saving_path + wig_fig_name + '.txt', W.wig, fmt="%E", newline='\n', comments='')
+                        np.savetxt(saving_path + wig_fig_name + '_sc.txt', vstack([W.freq_lamd, W.s]).T, fmt="%E", newline='\n', comments='')
+     
 
         for param in z_param_range:
             for z_ind in z_inp:
@@ -1916,7 +1927,7 @@ def plot_dpa_bucket(dpa, slice_num=None, repeat=1, GeV=1, figsize=4, cmap='jet',
         plt.close('all')
 
 
-def plot_edist(edist, figsize=4, fig_name=None, savefig=False, showfig=False, scatter=False, plot_x_y=True, plot_xy_s=True, bins=(50, 50, 50, 50), flip_t=True, beam_E_plot='eV', cmin=0, debug=1):
+def plot_edist(edist, figsize=4, fig_name=None, savefig=False, showfig=False, scatter=False, plot_x_y=True, plot_xy_s=True, bins=(50, 50, 50, 50), flip_t=True, beam_E_plot='eV', cmin=0, cmap='jet', debug=1):
 
     if showfig == False and savefig == False:
         return
@@ -1958,14 +1969,14 @@ def plot_edist(edist, figsize=4, fig_name=None, savefig=False, showfig=False, sc
         if scatter:
             ax_se.scatter(s, energy - energy_av, marker='.')
         else:
-            ax_se.hist2d(s, energy - energy_av, [bins[2], bins[3]], cmin=cmin)
+            ax_se.hist2d(s, energy - energy_av, [bins[2], bins[3]], cmin=cmin, cmap=cmap)
         ax_se.set_xlabel('s [$\mu$m]')
         ax_se.set_ylabel('E + ' + str(energy_av) + ' [MeV]')
     else:  # elif beam_E_plot=='gamma':
         if scatter:
             ax_se.scatter(s, edist.g, marker='.')
         else:
-            ax_se.hist2d(s, edist.g, [bins[2], bins[3]], cmin=cmin)
+            ax_se.hist2d(s, edist.g, [bins[2], bins[3]], cmin=cmin, cmap=cmap)
         ax_se.set_xlabel('s [$\mu$m]')
         ax_se.set_ylabel('$\gamma$')
 
@@ -1974,7 +1985,7 @@ def plot_edist(edist, figsize=4, fig_name=None, savefig=False, showfig=False, sc
         if scatter:
             ax_xs.scatter(s, 1e6 * edist.x, marker='.')
         else:
-            ax_xs.hist2d(s, 1e6 * edist.x, [bins[2], bins[0]], cmin=cmin)
+            ax_xs.hist2d(s, 1e6 * edist.x, [bins[2], bins[0]], cmin=cmin, cmap=cmap)
         ax_xs.set_xlabel('s [$\mu$m]')
         ax_xs.set_ylabel('x [$\mu$m]')
 
@@ -1982,7 +1993,7 @@ def plot_edist(edist, figsize=4, fig_name=None, savefig=False, showfig=False, sc
         if scatter:
             ax_ys.scatter(s, 1e6 * edist.y, marker='.')
         else:
-            ax_ys.hist2d(s, 1e6 * edist.y, [bins[2], bins[1]], cmin=cmin)
+            ax_ys.hist2d(s, 1e6 * edist.y, [bins[2], bins[1]], cmin=cmin, cmap=cmap)
         ax_ys.set_xlabel('s [$\mu$m]')
         ax_ys.set_ylabel('y [$\mu$m]')
 
@@ -1991,7 +2002,7 @@ def plot_edist(edist, figsize=4, fig_name=None, savefig=False, showfig=False, sc
         if scatter:
             ax_xy.scatter(edist.x * 1e6, edist.y * 1e6, marker='.')
         else:
-            ax_xy.hist2d(edist.x * 1e6, edist.y * 1e6, [bins[0], bins[1]], cmin=cmin)
+            ax_xy.hist2d(edist.x * 1e6, edist.y * 1e6, [bins[0], bins[1]], cmin=cmin, cmap=cmap)
         ax_xy.set_xlabel('x [$\mu$m]')
         ax_xy.set_ylabel('y [$\mu$m]')
 
@@ -1999,7 +2010,7 @@ def plot_edist(edist, figsize=4, fig_name=None, savefig=False, showfig=False, sc
         if scatter:
             ax_pxpy.scatter(edist.xp * 1e6, edist.yp * 1e6, marker='.')
         else:
-            ax_pxpy.hist2d(edist.xp * 1e6, edist.yp * 1e6, [bins[0], bins[1]], cmin=cmin)
+            ax_pxpy.hist2d(edist.xp * 1e6, edist.yp * 1e6, [bins[0], bins[1]], cmin=cmin, cmap=cmap)
         ax_pxpy.set_xlabel('px [$\mu$rad]')
         ax_pxpy.set_ylabel('py [$\mu$rad]')
 
