@@ -1,12 +1,12 @@
 ###### Output path #################################
-exp_dir	      '/scratch2b/qfi29231/results_dev_single/'
+exp_dir	      '/scratch2b/qfi29231/results_dev_GEN_single/'
 ###### Type of Launcher (Genesis v2 or v3) #########
 genesis_launcher	'genesis2.0'
 ###### Statistical runs ############################
 stat_run	   1
 ###### GENESIS input file ##########################
-in_gen 0
-gen_filename	gen_input.in
+in_gen 1
+gen_filename	/scratch2b/qfi29231/OCELOT_installation/S2E_FEL_dev_gen/Script/LFEL_0_DIST_current_td.in
 ###### Time dependent flags       ##################
 shotnoise   1
 itdp	    1
@@ -23,7 +23,7 @@ fl	2
 dl	2
 drl	78
 quadf	16
-quadd	-16
+quadd	16
 iwityp	1
 xkx	0.5
 xky	0.5

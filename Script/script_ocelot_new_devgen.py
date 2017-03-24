@@ -20,7 +20,7 @@ HMCC: 09-03-17: Adding the function gen_outplot_single in order to plot scan and
                 average over noise realisations and the maximum (peak power)
 HMCC: 21-03-17  Fixing post-processing and calling new functions for plotting that are part of the new implementation of OCELOT.
 HMCC: 22-03-17 Fixing nslice bug after the creation of the input file. Add support to the flat-top current profile by adding a flag i_profile to the input file.
-HMCC: 23-03-17: Fixing bug in read_GEN_input_file function. xkx and xky should be float not integers
+
 
 '''
 #################################################
@@ -158,7 +158,7 @@ def undulator_design(A_contents):
     dl=A_contents['dl']
     drl=A_contents['drl']
     quadf=A_contents['quadf']
-    quadd=A_contents['quadd']
+    quadd=-A_contents['quadd']
     nsec=A_contents['nsec']
     drl = int((fl+drl-nwig)/2)-1
     if A_contents['iwityp']==0:
