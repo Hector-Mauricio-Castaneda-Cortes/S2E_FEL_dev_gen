@@ -20,7 +20,7 @@ HMCC: 09-03-17: Adding the function gen_outplot_single in order to plot scan and
                 average over noise realisations and the maximum (peak power)
 HMCC: 21-03-17  Fixing post-processing and calling new functions for plotting that are part of the new implementation of OCELOT.
 HMCC: 22-03-17 Fixing nslice bug after the creation of the input file. Add support to the flat-top current profile by adding a flag i_profile to the input file.
-
+HMCC: 23-03-17: Fixing bug in read_GEN_input_file function. xkx and xky should be float not integers
 
 '''
 #################################################
@@ -74,8 +74,8 @@ def read_GEN_input_file(filename):
                       or str(splitLine[0]).startswith('ffspec') or str(splitLine[0]).startswith('convharm') 
                       or str(splitLine[0]).startswith('multconv')):
                     val_attr = int(float(splitLine[-1].replace('=',"")))
-                elif str(splitLine[0]).startswith('xk') :
-                    val_attr = int(float(splitLine[-1].replace('=',"")))
+                elif (str(splitLine[0])=='xkx') or (str(splitLine[0])=='xky'):
+                    val_attr = float(splitLine[-1].replace('=',""))
                 elif (splitLine[0].startswith('outputfile')):
                     continue
                 elif (splitLine[0].startswith('wcoefz')):
