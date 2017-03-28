@@ -3014,8 +3014,8 @@ def generate_lattice(lattice, unit=1.0, energy=None, debug=False):
                 slip=(L / gamma**2) / 2 #free space radiation slippage [m]
                 add_slip = xlamds - slip % xlamds #free-space slippage to compensate with undulator K to bring it to integer number of wavelengths
                 K_rms_add = sqrt(2 * add_slip * gamma**2 / L) #compensational K
-                # driftLat += 'AD' + '    ' + str(e.Kx * np.sqrt(0.5)) + '   ' + str(round((pos - prevPos - prevLen) / unit, 2)) + '  ' + str(round(prevLen / unit, 2)) + '\n'
-                driftLat += 'AD' + '    ' + str(K_rms_add) + '   ' + str(round((L) / unit, 2)) + '  ' + str(round(prevLen / unit, 2)) + '\n'
+                driftLat += 'AD' + '    ' + str(e.Kx * np.sqrt(0.5)) + '   ' + str(round((pos - prevPos - prevLen) / unit, 2)) + '  ' + str(round(prevLen / unit, 2)) + '\n' #HMCC uncomment
+                #driftLat += 'AD' + '    ' + str(K_rms_add) + '   ' + str(round((L) / unit, 2)) + '  ' + str(round(prevLen / unit, 2)) + '\n' #HMCC comment
 
             prevPos = pos
             prevLen = l
