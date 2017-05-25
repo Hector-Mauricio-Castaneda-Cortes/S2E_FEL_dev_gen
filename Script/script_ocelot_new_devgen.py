@@ -104,7 +104,7 @@ def read_input_file(f_path):
                  'npart','nslice','shotnoise','delz','dmpfld',
                  'itdp', 'delz','ncar','iwityp','ntail','fbess0','gauss_fl',
                  'rmax0','i_scan','n_scan','in_gen']
-    A_arg_float = ['xlamd','gamma0','aw0','awd','quadf','quadd',
+    A_arg_float = ['xlamd','xlamds','gamma0','aw0','awd','quadf','quadd',
                    'curlen','curpeak','delgam','rxbeam','rybeam',
                    'emitx','emity','alphax','alphay','prad0','dgrid',
                    'xkx','xky','init','end']
