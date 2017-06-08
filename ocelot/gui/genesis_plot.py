@@ -126,21 +126,25 @@ def plot_gen_out_all(handle=None, savefig='png', showfig=False, choice=(1, 1, 1,
 
         if isinstance(handle, GenesisOutput):
             if choice[0]:
-                f0 = plot_gen_out_e(handle, savefig=savefig, debug=debug)
+                f0 = plot_gen_out_e(handle, showfig=showfig, savefig=savefig, debug=debug)
             if choice[1]:
-                f1 = plot_gen_out_ph(handle, savefig=savefig, debug=debug)
+                f1 = plot_gen_out_ph(handle, showfig=showfig, savefig=savefig, debug=debug)
             if choice[2]:
-                f2 = plot_gen_out_z(handle, z=0, savefig=savefig, debug=debug)
+                f2 = plot_gen_out_z(handle, z=0, showfig=showfig, savefig=savefig, debug=debug)
             if choice[3]:
-                f3 = plot_gen_out_z(handle, z=inf, savefig=savefig, debug=debug)
+                f3 = plot_gen_out_z(handle, z=inf, showfig=showfig, savefig=savefig, debug=debug)
             if choice[4] != 0:
                 for z in arange(choice[4], max(handle.z), choice[4]):
-                    plot_gen_out_z(handle, z=z, savefig=savefig, debug=debug)
+                    plot_gen_out_z(handle, z=z, showfig=showfig, savefig=savefig, debug=debug)
             if choice[11]:
                 W=wigner_out(handle)
-                plot_wigner(W, savefig=savefig, debug=debug)
+                plot_wigner(W, showfig=showfig, savefig=savefig, debug=debug)
             if choice[12]:
-                plot_dpa_bucket_out(handle,scatter=0,slice_pos='max_P',repeat=3, savefig=savefig, cmap='jet')
+                try:
+                    plot_dpa_bucket_out(handle,scatter=0,slice_pos='max_P',repeat=3, showfig=showfig, savefig=savefig, cmap='jet')
+                except IOError:
+                    pass
+
             
                 
         if os.path.isfile(handle.filePath + '.dfl') and any(choice[5:8]):
@@ -149,13 +153,13 @@ def plot_gen_out_all(handle=None, savefig='png', showfig=False, choice=(1, 1, 1,
                 print('empty dfl, skipping')
             else:
                 if choice[5]:
-                    f5 = plot_dfl(dfl, savefig=savefig, debug=debug)
+                    f5 = plot_dfl(dfl, showfig=showfig, savefig=savefig, debug=debug)
                 if choice[6]:
-                    f6 = plot_dfl(dfl, far_field=1, freq_domain=0, auto_zoom=0, savefig=savefig, debug=debug)
+                    f6 = plot_dfl(dfl, far_field=1, freq_domain=0, auto_zoom=0, showfig=showfig, savefig=savefig, debug=debug)
                 if choice[7]:
-                    f7 = plot_dfl(dfl, far_field=0, freq_domain=1, auto_zoom=0, savefig=savefig, debug=debug)
+                    f7 = plot_dfl(dfl, far_field=0, freq_domain=1, auto_zoom=0, showfig=showfig, savefig=savefig, debug=debug)
                 if choice[8]:
-                    f8 = plot_dfl(dfl, far_field=1, freq_domain=1, auto_zoom=0, savefig=savefig, debug=debug)
+                    f8 = plot_dfl(dfl, far_field=1, freq_domain=1, auto_zoom=0, showfig=showfig, savefig=savefig, debug=debug)
         
         if os.path.isfile(handle.filePath + '.dpa') and (choice[9] or choice[10]) and handle('itdp') == True:
             dpa = read_dpa_file_out(handle, debug=debug)
@@ -183,7 +187,7 @@ def plot_gen_out_all(handle=None, savefig='png', showfig=False, choice=(1, 1, 1,
     print ('    total plotting time %.2f seconds' % (time.time() - plotting_time))
 
 
-def plot_gen_out_z(g, figsize=(10, 14), legend=True, fig_name=None, z=inf, savefig=False, showfig=False, debug=1):
+def plot_gen_out_z(g, figsize=(10, 14), legend=True, fig_name=None, z=inf, savefig=False, showfig=1, debug=1):
 
     number_ticks = 6
 
@@ -373,11 +377,11 @@ def plot_gen_out_z(g, figsize=(10, 14), legend=True, fig_name=None, z=inf, savef
         plt.close('all')
 
 
-def plot_gen_out_e(g, legend=False, figsize=4, fig_name='Electrons', savefig=False, showfig=False, debug=1):
+def plot_gen_out_e(g, legend=False, figsize=4, fig_name='Electrons', savefig=False, showfig=True, debug=1):
     fig = plot_gen_out_evo(g, params=['und_quad', 'el_size', 'el_energy', 'el_bunching'], figsize=figsize, legend=legend, fig_name=fig_name, savefig=savefig, showfig=showfig, debug=debug)
 
 
-def plot_gen_out_ph(g, legend=False, figsize=4, fig_name='Radiation', savefig=False, showfig=False, debug=1):
+def plot_gen_out_ph(g, legend=False, figsize=4, fig_name='Radiation', savefig=False, showfig=True, debug=1):
     if g('itdp'):
         fig = plot_gen_out_evo(g, params=['rad_pow_en', 'rad_spec', 'rad_size'], figsize=figsize, legend=legend, fig_name=fig_name, savefig=savefig, showfig=showfig, debug=debug)
     else:
@@ -890,7 +894,7 @@ def plot_gen_out_scanned_z(g, figsize=(10, 14), legend=True, fig_name=None, z=in
     return fig
 
 
-def plot_dfl(F, z_lim=[], xy_lim=[], figsize=4, cmap='jet', legend=True, phase=False, far_field=False, freq_domain=False, fig_name=None, auto_zoom=False, column_3d=True, savefig=False, showfig=False, return_proj=False, log_scale=0, debug=1, vartype_dfl=complex64):
+def plot_dfl(F, z_lim=[], xy_lim=[], figsize=4, cmap='jet', legend=True, phase=False, far_field=False, freq_domain=False, fig_name=None, auto_zoom=False, column_3d=True, savefig=False, showfig=True, return_proj=False, log_scale=0, debug=1, vartype_dfl=complex64):
     '''
     Plots dfl radiation object in 3d.
 
@@ -919,6 +923,9 @@ def plot_dfl(F, z_lim=[], xy_lim=[], figsize=4, cmap='jet', legend=True, phase=F
     if debug > 0:
         print('    plotting radiation field')
     start_time = time.time()
+    
+    if F.__class__ != RadiationField:
+        raise ValueError('wrong radiation object: should be RadiationField')
 
     suffix = ''
     if F.Nz() != 1:
@@ -1248,7 +1255,7 @@ def plot_dfl(F, z_lim=[], xy_lim=[], figsize=4, cmap='jet', legend=True, phase=F
         return
 
 
-def plot_gen_stat(proj_dir, run_inp=[], stage_inp=[], param_inp=[], s_param_inp=['p_int', 'energy', 'r_size_weighted', 'spec', 'error'], z_param_inp=['p_int', 'phi_mid_disp', 'spec', 'bunching', 'wigner'], dfl_param_inp=['dfl_spec'], run_param_inp=['p_int', 'spec', 'energy'], s_inp=['max'], z_inp=[0,'end'], run_s_inp=['max'], run_z_inp=['end'], savefig=True, saveval=1, showfig=0, debug=1):
+def plot_gen_stat(proj_dir, run_inp=[], stage_inp=[], param_inp=[], s_param_inp=['p_int', 'energy', 'r_size_weighted', 'spec', 'error'], z_param_inp=['p_int', 'phi_mid_disp', 'spec', 'bunching', 'wigner'], dfl_param_inp=['dfl_spec'], run_param_inp=['p_int', 'spec', 'energy'], s_inp=['max'], z_inp=[0,'end'], run_s_inp=['max'], run_z_inp=['end'], spec_pad=1, savefig=1, saveval=1, showfig=1, debug=1):
     '''
     The routine for plotting the statistical info of many GENESIS runs
     
@@ -1439,7 +1446,7 @@ def plot_gen_stat(proj_dir, run_inp=[], stage_inp=[], param_inp=[], s_param_inp=
 
                     W.filePath = proj_dir + 'results' + os.path.sep + 'stage_' + str(stage) + '__WIG__' + str(z_ind) + '__m'
                     wig_fig_name = 'stage_' + str(stage) + '__WIG__' + str(z_ind) + '__m'
-                    plot_wigner(W, z=z_ind, p_units='um', s_units='eV', fig_name=wig_fig_name, savefig=savefig, debug=0)
+                    plot_wigner(W, z=z_ind, p_units='um', s_units='ev', fig_name=wig_fig_name, savefig=savefig, debug=0)
                     if saveval != False:
                         if debug > 1:
                             print('      saving ' + wig_fig_name + '.txt')
@@ -1656,7 +1663,7 @@ def plot_gen_stat(proj_dir, run_inp=[], stage_inp=[], param_inp=[], s_param_inp=
         print('      done in %.2f seconds' % (time.time() - start_time))
 
 
-def plot_gen_corr(proj_dir, run_inp=[], p1=(), p2=(), savefig=False, showfig=False, saveval=False):
+def plot_gen_corr(proj_dir, run_inp=[], p1=(), p2=(), savefig=False, showfig=True, saveval=False):
     # param (parameter[str], stage[int], z_position[double], s_position [double or 'max'/'mean' stings])
     # e.g. ('p_int',1,inf,'max') , ('spec',1,inf,'max')
 
@@ -1779,10 +1786,11 @@ def plot_gen_corr(proj_dir, run_inp=[], p1=(), p2=(), savefig=False, showfig=Fal
 # np.where(out.s>1.8e-6)[0][0]
 
 
-def plot_dpa_bucket_out(out, dpa=None, slice_pos=None, repeat=1, GeV=1, figsize=4, cmap='jet', scatter=True, energy_mean=None, legend=True, fig_name=None, savefig=False, showfig=False, bins=[50,50], debug=1):
+def plot_dpa_bucket_out(out, dpa=None, slice_pos=None, repeat=1, GeV=1, figsize=4, cmap='jet', scatter=True, energy_mean=None, legend=True, fig_name=None, savefig=False, showfig=True, bins=[50,50], debug=1):
     
     if dpa == None:
         dpa=read_dpa_file_out(out)
+        
     
     if out.nSlices > 1:
         if type(slice_pos) == str:
@@ -1808,7 +1816,7 @@ def plot_dpa_bucket_out(out, dpa=None, slice_pos=None, repeat=1, GeV=1, figsize=
     return plot_dpa_bucket(dpa=dpa, slice_num=slice_num, repeat=repeat, GeV=GeV, figsize=figsize, cmap=cmap, scatter=scatter, energy_mean=energy_mean, legend=legend, fig_name=fig_name, savefig=savefig, showfig=showfig, suffix=suffix, bins=bins, debug=debug)
 
 
-def plot_dpa_bucket(dpa, slice_num=None, repeat=1, GeV=1, figsize=4, cmap='jet', scatter=True, energy_mean=None, legend=True, fig_name=None, savefig=False, showfig=False, suffix='', bins=(50,50), debug=1, return_mode_gamma=0):
+def plot_dpa_bucket(dpa, slice_num=None, repeat=1, GeV=1, figsize=4, cmap='jet', scatter=True, energy_mean=None, legend=True, fig_name=None, savefig=False, showfig=True, suffix='', bins=(50,50), debug=1, return_mode_gamma=0):
     part_colors = ['darkred', 'orange', 'g', 'b', 'm','c','y']
     # cmap='BuPu'
     y_bins = bins[0]
@@ -1820,6 +1828,9 @@ def plot_dpa_bucket(dpa, slice_num=None, repeat=1, GeV=1, figsize=4, cmap='jet',
     if debug > 0:
         print('    plotting bucket')
     start_time = time.time()
+    
+    if dpa.__class__ != GenesisParticlesDump:
+        raise ValueError('wrong particle object: should be GenesisParticlesDump')
 
     if shape(dpa.ph)[0] == 1:
         slice_num = 0
@@ -1927,7 +1938,7 @@ def plot_dpa_bucket(dpa, slice_num=None, repeat=1, GeV=1, figsize=4, cmap='jet',
         plt.close('all')
 
 
-def plot_edist(edist, figsize=4, fig_name=None, savefig=False, showfig=False, scatter=False, plot_x_y=True, plot_xy_s=True, bins=(50, 50, 50, 50), flip_t=True, beam_E_plot='eV', cmin=0, cmap='jet', debug=1):
+def plot_edist(edist, figsize=4, fig_name=None, savefig=False, showfig=True, scatter=False, plot_x_y=True, plot_xy_s=True, bins=(50, 50, 50, 50), flip_t=True, s_units='um', e_units='ev', cmin=0, cmap='jet', debug=1):
 
     if showfig == False and savefig == False:
         return
@@ -1935,6 +1946,8 @@ def plot_edist(edist, figsize=4, fig_name=None, savefig=False, showfig=False, sc
         print('    plotting edist file')
     start_time = time.time()
     # suffix=''
+    if edist.__class__ != GenesisElectronDist:
+        raise ValueError('wrong distribution object: should be GenesisElectronDist')
 
     if size(bins) == 1:
         bins = (bins, bins, bins, bins)  # x,y,t,e
@@ -1945,10 +1958,17 @@ def plot_edist(edist, figsize=4, fig_name=None, savefig=False, showfig=False, sc
     fig.clf()
     fig.set_size_inches(((3 + plot_x_y + plot_xy_s) * figsize, 3 * figsize), forward=True)
 
-    if flip_t:
-        s = -edist.t * speed_of_light * 1e6
-    else:
+    if s_units == 'fs':
+        s = edist.t * 1e15
+        s_label = 't [fs]'
+    elif s_units == 'um':
         s = edist.t * speed_of_light * 1e6
+        s_label = 's [$\mu$m]'
+        
+    # if flip_t:
+        # s = -edist.t * speed_of_light * 1e6
+    # else:
+        # s = edist.t * speed_of_light * 1e6
 
     hist, edges = np.histogram(s, bins=bins[2])  # calculate current histogram
     edges = edges[0:-1]  # remove the last bin edge to save equal number of points
@@ -1958,11 +1978,11 @@ def plot_edist(edist, figsize=4, fig_name=None, savefig=False, showfig=False, sc
     ax_curr = fig.add_subplot(2, 1 + plot_x_y + plot_xy_s, 1)
     #ax_curr.hist(s, bins,color='b')
     ax_curr.plot(edges, hist, color='b')
-    ax_curr.set_xlabel('s [$\mu$m]')
+    ax_curr.set_xlabel(s_label)
     ax_curr.set_ylabel('I [A]')
 
     ax_se = fig.add_subplot(2, 1 + plot_x_y + plot_xy_s, 2 + plot_x_y + plot_xy_s, sharex=ax_curr)
-    if beam_E_plot == 'eV':
+    if e_units == 'ev':
         energy = edist.g * m_e_MeV
         energy_av = int(mean(energy))
 
@@ -1970,14 +1990,14 @@ def plot_edist(edist, figsize=4, fig_name=None, savefig=False, showfig=False, sc
             ax_se.scatter(s, energy - energy_av, marker='.')
         else:
             ax_se.hist2d(s, energy - energy_av, [bins[2], bins[3]], cmin=cmin, cmap=cmap)
-        ax_se.set_xlabel('s [$\mu$m]')
+        ax_se.set_xlabel(s_label)
         ax_se.set_ylabel('E + ' + str(energy_av) + ' [MeV]')
     else:  # elif beam_E_plot=='gamma':
         if scatter:
             ax_se.scatter(s, edist.g, marker='.')
         else:
             ax_se.hist2d(s, edist.g, [bins[2], bins[3]], cmin=cmin, cmap=cmap)
-        ax_se.set_xlabel('s [$\mu$m]')
+        ax_se.set_xlabel(s_label)
         ax_se.set_ylabel('$\gamma$')
 
     if plot_xy_s:
@@ -1986,7 +2006,7 @@ def plot_edist(edist, figsize=4, fig_name=None, savefig=False, showfig=False, sc
             ax_xs.scatter(s, 1e6 * edist.x, marker='.')
         else:
             ax_xs.hist2d(s, 1e6 * edist.x, [bins[2], bins[0]], cmin=cmin, cmap=cmap)
-        ax_xs.set_xlabel('s [$\mu$m]')
+        ax_xs.set_xlabel(s_label)
         ax_xs.set_ylabel('x [$\mu$m]')
 
         ax_ys = fig.add_subplot(2, 1 + plot_x_y + plot_xy_s, 2, sharex=ax_curr)
@@ -1994,7 +2014,7 @@ def plot_edist(edist, figsize=4, fig_name=None, savefig=False, showfig=False, sc
             ax_ys.scatter(s, 1e6 * edist.y, marker='.')
         else:
             ax_ys.hist2d(s, 1e6 * edist.y, [bins[2], bins[1]], cmin=cmin, cmap=cmap)
-        ax_ys.set_xlabel('s [$\mu$m]')
+        ax_ys.set_xlabel(s_label)
         ax_ys.set_ylabel('y [$\mu$m]')
 
     if plot_x_y:
@@ -2014,7 +2034,10 @@ def plot_edist(edist, figsize=4, fig_name=None, savefig=False, showfig=False, sc
         ax_pxpy.set_xlabel('px [$\mu$rad]')
         ax_pxpy.set_ylabel('py [$\mu$rad]')
 
-    if scatter:
+    # if scatter:
+    if flip_t:
+        ax_curr.set_xlim([np.amax(s), np.amin(s)])
+    else:
         ax_curr.set_xlim([np.amin(s), np.amax(s)])
         
     ax_curr.set_ylim(ymin=0)
@@ -2038,11 +2061,14 @@ def plot_edist(edist, figsize=4, fig_name=None, savefig=False, showfig=False, sc
         print(('      done in %.2f seconds' % (time.time() - start_time)))
 
 
-def plot_beam(beam, figsize=3, showfig=False, savefig=False, fig=None, plot_xy=None, debug=0):
+def plot_beam(beam, figsize=3, showfig=True, savefig=False, fig=None, plot_xy=None, debug=0):
 
     if showfig == False and savefig == False:
         return
-
+    
+    if beam.__class__ != GenesisBeam:
+        raise ValueError('wrong beam object: should be GenesisBeam')
+    
     fontsize = 15
 
     if plot_xy == None:
@@ -2142,7 +2168,7 @@ def plot_beam(beam, figsize=3, showfig=False, savefig=False, fig=None, plot_xy=N
     else:
         plt.close('all')
 
-def plot_wigner(wig_or_out, z=np.inf, p_units='um', s_units='nm', x_lim=(None,None), y_lim=(None,None), downsample=1, cmap='seismic', abs_value=0, fig_name=None, savefig=False, showfig=False, debug=1):
+def plot_wigner(wig_or_out, z=np.inf, p_units='um', s_units='nm', x_lim=(None,None), y_lim=(None,None), downsample=1, autoscale=None, cmap='seismic', abs_value=0, fig_name=None, savefig=False, showfig=True, debug=1):
     '''
     plots wigner distribution (WD) with marginals
     wig_or_out -  may be WignerDistribution() or GenesisOutput() object
@@ -2177,6 +2203,9 @@ def plot_wigner(wig_or_out, z=np.inf, p_units='um', s_units='nm', x_lim=(None,No
     if W.z!=None:
         fig_text += ' ' + str(W.z) + 'm'
         
+    if autoscale:
+        fig_text += ' autsc'
+        
     fig = plt.figure(fig_text)
     plt.clf()
     fig.set_size_inches((18, 13), forward=True)
@@ -2193,7 +2222,7 @@ def plot_wigner(wig_or_out, z=np.inf, p_units='um', s_units='nm', x_lim=(None,No
         power_scale=W.s*1e6
         p_label_txt='s [$\mu$m]'
     
-    if s_units=='eV':
+    if s_units=='ev':
         spec_scale=speed_of_light*h_eV_s*1e9/W.freq_lamd
         f_label_txt='ph.energy [eV]'
     else:
@@ -2248,9 +2277,29 @@ def plot_wigner(wig_or_out, z=np.inf, p_units='um', s_units='nm', x_lim=(None,No
     axHistx.yaxis.major.locator.set_params(nbins=4)
     axHisty.xaxis.major.locator.set_params(nbins=2)
     
+    if autoscale == 1:
+        autoscale = 1e-2
     
-    axScatter.set_xlim(x_lim[0], x_lim[1])
-    axScatter.set_ylim(y_lim[0], y_lim[1])
+    if autoscale != None:
+        max_power = np.amax(power)
+        max_spectrum = np.amax(spec)
+        idx_p = np.where(power > max_power*autoscale)[0]
+        # print(max_spectrum*autoscale)
+        # print(spectrum)
+        idx_s = np.where(spec > max_spectrum*autoscale)[0]
+        
+        x_lim = [ power_scale[idx_p[0]], power_scale[idx_p[-1]] ]
+        y_lim = [ spec_scale[idx_s[0]], spec_scale[idx_s[-1]] ]
+        
+        x_lim = np.array(x_lim)
+        y_lim = np.array(y_lim)
+        x_lim.sort()
+        y_lim.sort()
+    
+    # axScatter.set_xlim(x_lim[0], x_lim[1])
+    # axScatter.set_ylim(y_lim[0], y_lim[1])
+    axHistx.set_xlim(x_lim[0], x_lim[1])
+    axHisty.set_ylim(y_lim[0], y_lim[1])
     
     if savefig != False:
         if savefig == True:
@@ -2274,7 +2323,7 @@ def plot_wigner(wig_or_out, z=np.inf, p_units='um', s_units='nm', x_lim=(None,No
 '''
 tmp for HXRSS
 '''
-def read_plot_dump_proj(exp_dir, stage, run_ids, plot_phase=1, showfig=0, savefig=0, debug=1):
+def read_plot_dump_proj(exp_dir, stage, run_ids, plot_phase=1, showfig=True, savefig=0, debug=1):
 
     if showfig == 0 and savefig == 0:
         return None
@@ -2389,7 +2438,7 @@ def read_plot_dump_proj(exp_dir, stage, run_ids, plot_phase=1, showfig=0, savefi
         plt.close('all')
 
 
-def plot_dfl_waistscan(sc_res, fig_name=None, showfig=0, savefig=0, debug=1):
+def plot_dfl_waistscan(sc_res, fig_name=None, showfig=True, savefig=0, debug=1):
 
     if showfig == False and savefig == False:
         return
@@ -2437,7 +2486,7 @@ def plot_dfl_waistscan(sc_res, fig_name=None, showfig=0, savefig=0, debug=1):
         plt.close(fig)
 
 
-def plot_trf(trf, mode='tr', autoscale=0, showfig=0, savefig=None):
+def plot_trf(trf, mode='tr', autoscale=0, showfig=True, savefig=None):
     '''
     plots TransferFunction() object,
     mode: 
@@ -2538,6 +2587,83 @@ def plot_trf(trf, mode='tr', autoscale=0, showfig=0, savefig=None):
         plt.show()
     else:
         plt.close(trf_fig)
+        
+
+def plot_stokes_values(S,fig=None,s_lin=0, norm=0, showfig=True, gw=1):
+    
+    if type(S) != StokesParameters:
+        raise ValueError('Not a StokesParameters object')
+        
+    if size(S.sc) > 1:
+        if fig == None:
+            plt.figure('Stokes S')
+        else:
+            plt.figure(fig.number)
+        plt.clf()
+        sc = S.sc * 1e6
+        
+        if gw:
+            S.s0 /= 1e9
+            S.s1 /= 1e9
+            S.s2 /= 1e9
+            S.s3 /= 1e9
+            plt.ylabel('$S_0$ [GW]')
+        else:
+            plt.ylabel('$S_0$ [W]')
+        plt.xlabel('s [$\mu$m]')
+        
+        if s_lin:
+            # plt.step(sc, np.sqrt(S.s1**2+S.s2**2), linewidth=2, where='mid',color=[0.5,0.5,0.5], linestyle='--')
+            plt.step(sc, np.sqrt(S.s1**2+S.s2**2), linewidth=2, where='mid',color='m', linestyle='--')
+ 
+        plt.step(sc, S.s1, linewidth=2, where='mid',color='g')
+        plt.step(sc, S.s2, linewidth=2, where='mid',color='r')
+        plt.step(sc, S.s3, linewidth=2, where='mid',color='c')
+        plt.step(sc, S.s0, linewidth=2, where='mid',color='b')
+        # plt.step(sc, S.s1, linewidth=2, where='mid',color='m')
+        # plt.step(sc, S.s2, linewidth=2, where='mid',color='r')
+        # plt.step(sc, S.s3, linewidth=2, where='mid',color='c')
+        # plt.step(sc, S.s0, linewidth=2, where='mid',color='k')
+        
+        if s_lin:
+            plt.legend(['$\sqrt{S_1^2+S_2^2}$','$S_1$','$S_2$','$S_3$','$S_0$'], loc='lower center', ncol=5, mode="expand", borderaxespad=0.5, frameon=1).get_frame().set_alpha(0.4)
+        else:
+            plt.legend(['$S_1$','$S_2$','$S_3$','$S_0$'], fontsize=13, ncol=4, loc='upper left', frameon=1).get_frame().set_alpha(0.4)
+#            plt.legend(['$S_1$','$S_2$','$S_3$','$S_0$'], loc='lower center', ncol=5, mode="expand", borderaxespad=0.5, frameon=1).get_frame().set_alpha(0.4)
+        
+        if showfig:
+            plt.show()
+        else:
+            plt.close()
+        
+        
+def plot_stokes_angles(S,fig=None,showfig=True):
+    
+    if type(S) != StokesParameters:
+        raise ValueError('Not a StokesParameters object')
+        
+    if size(S.sc) > 1:
+        if fig == None:
+            plt.figure('Stokes angles')
+        else:
+            plt.figure(fig.number)
+        plt.clf()
+        sc = S.sc * 1e6
+        psize = S.s_l()
+        psize /= np.amax(psize)
+#        plt.step(sc, S.chi(), sc, S.psi(),linewidth=2)
+        plt.scatter(sc, S.chi(),psize,linewidth=2,color='g')
+        plt.scatter(sc, S.psi(),psize,linewidth=2,color='b')
+        plt.legend(['$\chi$','$\psi$'])#,loc='best')
+        plt.xlabel('s [$\mu$m]')
+        plt.ylabel('[rad]')
+        plt.ylim([-np.pi/2,np.pi/2])
+        plt.xlim([np.amin(sc),np.amax(sc)])
+        
+        if showfig:
+            plt.show()
+        else:
+            plt.close()
         
 '''
     scheduled for removal
