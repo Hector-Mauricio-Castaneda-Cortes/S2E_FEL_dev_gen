@@ -1012,7 +1012,6 @@ def run_genesis(inp, launcher, read_level=2, assembly_ver='pyt', debug=1):
     # os.system('rm -rf ' + out_path+'*') # to make sure out files are cleaned
     # os.system('rm -rf ' + inp_path+'*') # to make sure inp files are cleaned
     os.system('rm -rf ' + inp.run_dir + 'tmp.cmd')
-
     # create and fill necessary input files
     if inp.latticefile == None:
         if inp.lat != None and (inp.magin!=0): #HMCC (running without creating lattice file, read input file)
@@ -2284,12 +2283,12 @@ def read_edist_file(filePath, debug=1):
     edist.t = np.array(dist_column_values['T'])
     edist.g = np.array(dist_column_values['P'])
 
-    edist.x = np.flipud(edist.x)
-    edist.y = np.flipud(edist.y)
-    edist.xp = np.flipud(edist.xp)
-    edist.yp = np.flipud(edist.yp)
-    edist.t = np.flipud(edist.t)
-    edist.g = np.flipud(edist.g)
+   # edist.x = np.flipud(edist.x) HMCC avoid the flipping of the current
+   # edist.y = np.flipud(edist.y) HMCC avoid the flipping of the current
+   # edist.xp = np.flipud(edist.xp) HMCC avoid the flipping of the current
+   # edist.yp = np.flipud(edist.yp) HMCC avoid the flipping of the current
+   # edist.t = np.flipud(edist.t) HMCC avoid the flipping of the current
+   # edist.g = np.flipud(edist.g) HMCC avoid the flipping of the current
 
     edist.part_charge = charge / edist.len()
 
@@ -3073,7 +3072,6 @@ def generate_lattice(lattice, unit=1.0, energy=None, debug=False, min_phsh = Fal
         
         # print e.type, pos, prevPos
         if e.__class__ == Undulator:
-            print('Kx {}'.format(e.Kx*np.sqrt(0.5)))
             l = float(e.nperiods) * float(e.lperiod)
 
             undLat += 'AW' + '    ' + str(e.Kx * np.sqrt(0.5)) + '   ' + str(round(l / unit, 2)) + '  ' + str(round((pos - prevPos - prevLen) / unit, 2)) + '\n'
