@@ -644,6 +644,8 @@ class FEL_simulation_block(object):
         if getattr(self,'i_beam')==0:
             setattr(inp,'nslice',getattr(A_input,'nslice'))
         else:
+            beamf = getattr(inp,'beam')
+            setattr(inp,'curlen', getattr(beamf,tpulse) * speed_of_light / 1e15)
             setattr(inp,'nslice',8 * int(inp.curlen / inp.zsep / inp.xlamds))
 
         if (getattr(self,'i_edist')==1) or (getattr(self,'i_match')==1):
