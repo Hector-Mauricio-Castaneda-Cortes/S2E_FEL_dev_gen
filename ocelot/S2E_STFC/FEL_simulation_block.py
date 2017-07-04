@@ -2,6 +2,7 @@
 '''FEL simulation block.
 
 HMCC: 25-05-17 Reimplementation of the FEL simulation block (creation of class with corresponding methods)
+HMCC: 04-07/17 Fixing bugs of time window (reading nslice from input file)
 '''
 #################################################
 ### import of all modules that are required.
@@ -598,7 +599,14 @@ class FEL_simulation_block(object):
         if (getattr(self,'idump')) == 1:
             setattr(inp,'idump',1)
             setattr(inp,'idmpfld',1)
-                        
+
+        # Set up some input parameters
+        setattr(inp, 'f1st', int(getattr(inp, 'fl') / 2))
+        setattr(inp, 'awd', float(getattr(inp, 'aw0')))
+        setattr(inp, 'zstop', 0)
+        setattr(inp, 'nbins', getattr(A_input, 'nbins'))
+
+
         # Existent dist or beam file (if exists)
         if (getattr(self,'i_edist') == 1) and (hasattr(self,'file_edist')):
             inp=GEN_existent_beam_dist_dpa_rad(inp,'edist')
@@ -625,25 +633,30 @@ class FEL_simulation_block(object):
         
         # Rematch beam (if the flag has been set within the data dictionary)
         if (getattr(inp,'edist')!= None) and hasattr(self,'i_match') and (getattr(self,'i_match')==1):
-            inp = self.rematch_edist(inp)            
+            inp = self.rematch_edist(inp)
             
-          # Overwrite the simulation attributes of the input object with the ones defined in the input file
+        # Overwrite the simulation attributes of the input object with the ones defined in the input file
         for key in A_input.__dict__: 
             if (key in A_simul) or (key in A_und) or (key in A_td) or (key =='xlamds'):
                 setattr(inp,key, getattr(A_input,key))
 
-        # Overwrite the simulation attributes if the user has new values for them defined in the input data structure      
-        
-        if (hasattr(self,'i_rewrite')) and (hasattr(self,'par_rew')) and (getattr(self,'i_rewrite')==1):
+        # Setting up the time window of the distribution
+        if getattr(self,'i_beam')==0:
+            setattr(inp,'nslice',getattr(A_input,'nslice'))
+        else:
+            setattr(inp,'nslice',8 * int(inp.curlen / inp.zsep / inp.xlamds))
+
+        if (getattr(self,'i_edist')==1) or (getattr(self,'i_match')==1):
+            setattr(inp,'ntail',0)
+        else:
+            setattr(inp,'ntail',int(-getattr(inp,'nslice')/2))
+
+        # Overwrite the simulation attributes if the user has new values for them defined in the input data structure
+        if (hasattr(self, 'i_rewrite')) and (hasattr(self, 'par_rew')) and (getattr(self, 'i_rewrite') == 1):
             inp = self.GEN_rewrite_par(inp)
         else:
             pass
-        # Set up some input parameters
-        setattr(inp,'f1st',int(getattr(inp,'fl')/2))
-        setattr(inp,'awd',float(getattr(inp,'aw0')))
-        setattr(inp,'zstop',0)
-        setattr(inp,'nbins',getattr(A_input,'nbins'))        
-    
+
         # Running over noise realisations and/or scan parameters
         for n_par in s_scan:
             for run_id in run_ids:           
