@@ -304,9 +304,9 @@ class FEL_simulation_block(object):
         if (self.parameter in A_simul):
             setattr(inp,self.parameter,n_p)
             inp.lat = A_und['Magnetic Lattice']
-            print(' ++++++++++ Scan {} of the parameter {}'.format(n_p, self.parameter))
+            print(' ++++++++++ Scan {0} of the parameter {1}'.format(n_p, self.parameter))
         elif ((self.parameter in A_undl) or (self.parameter == 'xlamds')): 
-            print(' ++++++++++ Steady State Scan {} of the parameter {} Quad optimisation'.format(n_p, self.parameter))
+            print(' ++++++++++ Steady State Scan {0} of the parameter {1} Quad optimisation'.format(n_p, self.parameter))
             setattr(inp,'type','steady')
             setattr(inp,'itdp',0)
             setattr(inp,'shotnoise',0)
@@ -553,7 +553,7 @@ class FEL_simulation_block(object):
         A_td = ['itdp','prad0','shotnoise']
         A_und = ['quadd', 'quadf','fl','dl','drl','nsec','nwig','aw0', 'awd']
 
-        print('++++ Output Path {} ++++++'.format(self.file_pout))
+        print('++++ Output Path {0} ++++++'.format(self.file_pout))
     
         # Setting the number of noise realisations and scan (over quads or different parameters)
         
@@ -569,16 +569,16 @@ class FEL_simulation_block(object):
                     s_scan = range(int(self.init),int(self.end),int(np.ceil((self.end-self.init)/(self.n_scan))))
                 else:
                     s_scan = np.linspace(self.init,self.end,self.n_scan) 
-                print('++++ Quad scan, parameter  {} ++++++'.format(self.parameter))
+                print('++++ Quad scan, parameter  {0} ++++++'.format(self.parameter))
             elif (self.parameter=='xlamds'):
                 run_ids= range(1)
                 s_scan = np.linspace(self.init,self.end,self.n_scan)
-                print('++++ Quad scan, parameter  {} ++++++'.format(self.parameter))
+                print('++++ Quad scan, parameter  {0} ++++++'.format(self.parameter))
             else:        
                 s_scan = np.linspace(self.init,self.end,self.n_scan)
                 num = self.stat_run
                 run_ids = xrange(0,num)
-                print('++++ Number of noise realisations {} ++++++'.format(num))  
+                print('++++ Number of noise realisations {0} ++++++'.format(num))
     
             # setting the undulator design( Magnetic Lattice)
         A_undulator = self.undulator_design(A_input)
@@ -666,7 +666,7 @@ class FEL_simulation_block(object):
                     inp.lat = A_undulator['Magnetic Lattice']
                 inp_arr.append(inp)                   
                 launcher=get_genesis_launcher(self.gen_launch)
-                print('+++++ Starting simulation of noise realisation {}'.format(run_id))
+                print('+++++ Starting simulation of noise realisation {0}'.format(run_id))
                 g = run_genesis(inp,launcher)
                 setattr(g,'filePath',str(inp.run_dir))
                 if (inp.itdp==1):
@@ -677,6 +677,6 @@ class FEL_simulation_block(object):
                 inp.beamfile=None
                 inp.fieldfile=None
                 inp.radfile=None
-        print('++++ postprocessing (results saved in {}results++++'.format(self.file_pout))
+        print('++++ postprocessing (results saved in {0}results++++'.format(self.file_pout))
         self.post_processing(inp,s_scan)
         return inp_arr
