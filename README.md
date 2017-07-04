@@ -1,6 +1,8 @@
 # S2E_FEL_dev_gen
 New version of OCELOT (including new script to run it)
 
+ Update
+ 
 
 23-03-17
 
@@ -104,6 +106,10 @@ init	   12                                                (Initial value of the 
 end	   25                                                    (End value of the scan parameter_)
 n_scan	   10                                                (Number of scans)
 
+
+30-06-17
+
+Implementation of the new class FEL_simulation_block as package of the modified version of OCELOT. Therefore, in order to run a simulation, there is no need for the dummy input , but an existent GENESIS input file which can be read by a method of the class. A script was added to the Script folder in order to show the usage of the FEL_simulation_block class
 
 HMCC
 
