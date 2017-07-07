@@ -3,6 +3,9 @@
 
 HMCC: 25-05-17 Reimplementation of the FEL simulation block (creation of class with corresponding methods)
 HMCC: 04-07/17 Fixing bugs of time window (reading nslice from input file)
+HMCC: 07-07-17: Fixing bug of reading the input file. Now it overwrites the attributes of the input object by
+                the ones of the initial input object. It still does the calculation of the twiss parameters from
+                the beam object. 
 '''
 #################################################
 ### import of all modules that are required.
@@ -79,6 +82,8 @@ class FEL_simulation_block(object):
                     continue
                 else:
                     splitLine = line.rsplit('=') 
+                    if(splitLine[0][0]!=' '):
+                        splitLine[0]= ' '+splitLine[0]
                     if splitLine[0].startswith('alphax'):
                         splitLine[0]=splitLine[0].replace('=','').rstrip()
                     else:
@@ -124,9 +129,7 @@ class FEL_simulation_block(object):
         from ocelot.rad.undulator_params import UndulatorParameters
         
         ## Taking it from the Notebook
-        #xlamd = A_contents['xlamd']
         xlamd = getattr(A_contents,'xlamd')
-        #nwig=A_contents['nwig']
         nwig = getattr(A_contents,'nwig')
         gamma0 = getattr(A_contents,'gamma0')
         xlamds = getattr(A_contents,'xlamds')
@@ -175,8 +178,8 @@ class FEL_simulation_block(object):
         from ocelot.cpbd.beam import Beam
     
         beamf = Beam()
-        A_dict= {'E':getattr(A_contents,'gamma0')*m_e_GeV,'sigma_E':getattr(A_contents,'delgam')*m_e_GeV,'beta_x':getattr(A_contents,'gamma0')*(getattr(A_contents,'rxbeam')**2)/(getattr(A_contents,'emitx')), 
-            'beta_y':getattr(A_contents,'gamma0')*(getattr(A_contents,'rybeam')**2)/getattr(A_contents,'emity'), 'alpha_x':getattr(A_contents,'alphax'),'alpha_y':getattr(A_contents,'alphay'),
+        A_dict= {'E':getattr(A_contents,'gamma0')*m_e_GeV,'sigma_E':getattr(A_contents,'delgam')*m_e_GeV,'beta_x':float((getattr(A_contents,'gamma0')*getattr(A_contents,'rxbeam')**2)/getattr(A_contents,'emitx')), 
+            'beta_y':float((getattr(A_contents,'gamma0')*getattr(A_contents,'rybeam')**2)/getattr(A_contents,'emity')), 'alpha_x':getattr(A_contents,'alphax'),'alpha_y':getattr(A_contents,'alphay'),
             'emit_x':getattr(A_contents,'emitx')/getattr(A_contents,'gamma0'),'emit_y' : getattr(A_contents,'emity')/getattr(A_contents,'gamma0'),'emit_xn':getattr(A_contents,'emitx'),'emit_yn':getattr(A_contents,'emity'),
              'x' :  0.000000e+00,'y' : 0.000000e+00,'px':0,'py':0,'I':getattr(A_contents,'curpeak'),'tpulse':1e15*(getattr(A_contents,'curlen')/speed_of_light)}
                 
@@ -305,6 +308,7 @@ class FEL_simulation_block(object):
         if (self.parameter in A_simul):
             setattr(inp,self.parameter,n_p)
             inp.lat = A_und['Magnetic Lattice']
+            setattr(inp,'magin',1)
             print(' ++++++++++ Scan {0} of the parameter {1}'.format(n_p, self.parameter))
         elif ((self.parameter in A_undl) or (self.parameter == 'xlamds')): 
             print(' ++++++++++ Steady State Scan {0} of the parameter {1} Quad optimisation'.format(n_p, self.parameter))
@@ -334,6 +338,7 @@ class FEL_simulation_block(object):
             A_undulator=self.undulator_design(A_inpt)
             inp.lat =A_undulator['Magnetic Lattice'] 
             inp.latticefile = inp_file+'.lat'
+            setattr(inp,'magin',1)
             inp = self.beta_matching(inp,inp.run_dir)
             if inp.edist!=None:
                 inp0=inp
@@ -346,6 +351,7 @@ class FEL_simulation_block(object):
             setattr(A_inpt,self.parameter,n_p)
             setattr(inp,self.parameter,n_p)
             inp.lat = A_undulator['Magnetic Lattice']
+            setattr(inp,'magin',1)
         return inp
         
     def gen_outplot_single(self,run_inp= [], itdp = True,savefig=True):
@@ -549,9 +555,6 @@ class FEL_simulation_block(object):
             self.file_pout=self.file_pout+'/'
         
         inp_arr = []
-        A_bbeam = ['gamma0','curlen','curpeak','delgam','rxbeam','rybeam','emitx','emity','alphax','alphay','xbeam','ybeam','pxbeam','pybeam']
-        A_simul = ['npart','ncar','zsep','delz','dmpfld','fbess0','dgrid','rmax0','xkx','xky','iwityp']
-        A_td = ['itdp','prad0','shotnoise']
         A_und = ['quadd', 'quadf','fl','dl','drl','nsec','nwig','aw0', 'awd']
 
         print('++++ Output Path {0} ++++++'.format(self.file_pout))
@@ -594,18 +597,22 @@ class FEL_simulation_block(object):
          
             # Generate input object
         inp = generate_input(A_undulator['Undulator Parameters'],A_beam,itdp=i_tdp)
-
+        
+        # Overwrite the simulation attributes of the input object with the ones defined in the input file
+        for key in A_input.__dict__: 
+            if (key != 'rxbeam') or (key !='rybeam') or (key != 'alphax') or (key !='alphay') and (key!= 'magin') and (key!='xlamds'):
+                setattr(inp,key, getattr(A_input,key))
+        if getattr(inp,'itdp')==0:
+            setattr(inp,'type','steady')
+        else:
+            setattr(inp,'type','tdp') 
+        setattr(inp, 'f1st', int(getattr(inp, 'fl') / 2))
+        setattr(inp, 'awd', float(getattr(inp, 'aw0')))
+        
         # idump attribute
         if (getattr(self,'idump')) == 1:
             setattr(inp,'idump',1)
             setattr(inp,'idmpfld',1)
-
-        # Set up some input parameters
-        setattr(inp, 'f1st', int(getattr(inp, 'fl') / 2))
-        setattr(inp, 'awd', float(getattr(inp, 'aw0')))
-        setattr(inp, 'zstop', 0)
-        setattr(inp, 'nbins', getattr(A_input, 'nbins'))
-
 
         # Existent dist or beam file (if exists)
         if (getattr(self,'i_edist') == 1) and (hasattr(self,'file_edist')):
@@ -633,12 +640,7 @@ class FEL_simulation_block(object):
         
         # Rematch beam (if the flag has been set within the data dictionary)
         if (getattr(inp,'edist')!= None) and hasattr(self,'i_match') and (getattr(self,'i_match')==1):
-            inp = self.rematch_edist(inp)
-            
-        # Overwrite the simulation attributes of the input object with the ones defined in the input file
-        for key in A_input.__dict__: 
-            if (key in A_simul) or (key in A_und) or (key in A_td) or (key =='xlamds'):
-                setattr(inp,key, getattr(A_input,key))
+            inp = self.rematch_edist(inp)  
 
         # Setting up the time window of the distribution
         if getattr(self,'i_beam')==0:
@@ -658,7 +660,6 @@ class FEL_simulation_block(object):
             inp = self.GEN_rewrite_par(inp)
         else:
             pass
-
         # Running over noise realisations and/or scan parameters
         for n_par in s_scan:
             for run_id in run_ids:           
@@ -679,6 +680,7 @@ class FEL_simulation_block(object):
                     inp= self.GEN_scan(n_par ,A_input,A_undulator,inp)                      
                 else:
                     inp.lat = A_undulator['Magnetic Lattice']
+                    setattr(inp,'magin',1)
                 inp_arr.append(inp)                   
                 launcher=get_genesis_launcher(self.gen_launch)
                 print('+++++ Starting simulation of noise realisation {0}'.format(run_id))

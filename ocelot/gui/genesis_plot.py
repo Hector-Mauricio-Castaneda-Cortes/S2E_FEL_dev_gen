@@ -597,7 +597,7 @@ def subfig_el_bunching(ax_bunching, g, legend):
     ax_bunching.grid(True)
 
 
-def subfig_rad_pow_en(ax_rad_pow, g, legend, colour='navy', log=1):#HMCC
+def subfig_rad_pow_en(ax_rad_pow, g, legend, colour='navy', log=0):#HMCC
     import matplotlib.pyplot as plt
     import numpy as np
     from matplotlib.ticker import ScalarFormatter #HMCC

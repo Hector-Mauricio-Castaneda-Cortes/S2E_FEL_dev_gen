@@ -1004,7 +1004,6 @@ def run_genesis(inp, launcher, read_level=2, assembly_ver='pyt', debug=1):
 
     inp_file = filename_from_path(inp_path)
     out_file = filename_from_path(out_path)
-
     # cleaning directory
     if debug > 0:
         print ('    removing old files')
@@ -1014,7 +1013,7 @@ def run_genesis(inp, launcher, read_level=2, assembly_ver='pyt', debug=1):
     os.system('rm -rf ' + inp.run_dir + 'tmp.cmd')
     # create and fill necessary input files
     if inp.latticefile == None:
-        if inp.lat != None and (inp.magin!=0): #HMCC (running without creating lattice file, read input file)
+        if inp.lat != None: #HMCC (running without creating lattice file, read input file)
             if debug > 1:
                 print ('    writing ' + inp_file + '.lat')
             open(inp_path + '.lat', 'w').write(generate_lattice(inp.lat, unit=inp.xlamd*inp.delz, energy=inp.gamma0 * m_e_GeV))
