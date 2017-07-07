@@ -616,15 +616,15 @@ class FEL_simulation_block(object):
 
         # Existent dist or beam file (if exists)
         if (getattr(self,'i_edist') == 1) and (hasattr(self,'file_edist')):
-            inp=GEN_existent_beam_dist_dpa_rad(inp,'edist')
+            inp=self.GEN_existent_beam_dist_dpa_rad(inp,'edist')
         elif (getattr(self,'i_beam') == 1) and (hasattr(self,'file_beam')):
-            inp=GEN_existent_beam_dist_dpa_rad(inp,'beam')
+            inp=self.GEN_existent_beam_dist_dpa_rad(inp,'beam')
         elif  (getattr(self,'i_rad') == 1) and (hasattr(self,'file_rad')):
-            inp=GEN_existent_beam_dist_dpa_rad(inp,'rad')
+            inp=self.GEN_existent_beam_dist_dpa_rad(inp,'rad')
         elif  (getattr(self,'i_dpa') == 1) and (hasattr(self,'file_dpa')):
-            inp=GEN_existent_beam_dist_dpa_rad(inp,'dpa')
+            inp=self.GEN_existent_beam_dist_dpa_rad(inp,'dpa')
         elif  (getattr(self,'i_dfl') == 1) and (hasattr(self,'file_dfl')):
-            inp=GEN_existent_beam_dist_dpa_rad(inp,'dfl')
+            inp=self.GEN_existent_beam_dist_dpa_rad(inp,'dfl')
         else:
             print('++++ No edist or beam or dpa or rad file available ++++++')
         
