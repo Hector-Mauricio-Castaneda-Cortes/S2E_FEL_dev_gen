@@ -2,10 +2,9 @@
 '''FEL simulation block.
 
 HMCC: 25-05-17 Reimplementation of the FEL simulation block (creation of class with corresponding methods)
-HMCC: 04-07/17 Fixing bugs of time window (reading nslice from input file)
-HMCC: 07-07-17: Fixing bug of reading the input file. Now it overwrites the attributes of the input object by
-                the ones of the initial input object. It still does the calculation of the twiss parameters from
-                the beam object. 
+HMCC: 04-07-17 Fixing bugs of time window (reading nslice from input file)
+HMCC: 12-07-17: Fixing bugs reading from input file, adding support to read beam file and fixing bugs 
+               of reading existent beam file.
 '''
 #################################################
 ### import of all modules that are required.
@@ -81,9 +80,9 @@ class FEL_simulation_block(object):
                 if not line.strip():
                     continue
                 else:
-                    splitLine = line.rsplit('=') 
-                    if(splitLine[0][0]!=' '):
-                        splitLine[0]= ' '+splitLine[0]
+                    splitLine = line.rsplit('=')
+                    if splitLine[0][0]!=' ':
+                        splitLine[0] = ' '+splitLine[0]
                     if splitLine[0].startswith('alphax'):
                         splitLine[0]=splitLine[0].replace('=','').rstrip()
                     else:
@@ -142,7 +141,8 @@ class FEL_simulation_block(object):
         E_beam = gamma0*m_e_GeV
         E_photon=h_eV_s*speed_of_light/xlamds
         p_beam = np.sqrt(E_beam**2-m_e_GeV**2)
-        drl = int((fl+drl-nwig)/2)-1
+        drl1 = int(np.rint((drl-nwig)*0.5))
+        drl2 = drl-nwig-drl1
         kw0 = float(getattr(A_contents,'aw0'))/np.sqrt(0.5)
        
        # Instance of the Undulator object
@@ -152,8 +152,8 @@ class FEL_simulation_block(object):
         und.Kx = kw0    
        
        # Drift sections (if they are the same)
-        d_rift = Drift(l=drl*und.lperiod)
-        d_rift2 = Drift(l=drl*und.lperiod)
+        d_rift = Drift(l=drl1*und.lperiod)
+        d_rift2 = Drift(l=drl2*und.lperiod)
        
        # Definition of Quads
      
@@ -178,8 +178,8 @@ class FEL_simulation_block(object):
         from ocelot.cpbd.beam import Beam
     
         beamf = Beam()
-        A_dict= {'E':getattr(A_contents,'gamma0')*m_e_GeV,'sigma_E':getattr(A_contents,'delgam')*m_e_GeV,'beta_x':float((getattr(A_contents,'gamma0')*getattr(A_contents,'rxbeam')**2)/getattr(A_contents,'emitx')), 
-            'beta_y':float((getattr(A_contents,'gamma0')*getattr(A_contents,'rybeam')**2)/getattr(A_contents,'emity')), 'alpha_x':getattr(A_contents,'alphax'),'alpha_y':getattr(A_contents,'alphay'),
+        A_dict= {'E':getattr(A_contents,'gamma0')*m_e_GeV,'sigma_E':getattr(A_contents,'delgam')*m_e_GeV,'beta_x':getattr(A_contents,'gamma0')*(getattr(A_contents,'rxbeam')**2)/(getattr(A_contents,'emitx')), 
+            'beta_y':getattr(A_contents,'gamma0')*(getattr(A_contents,'rybeam')**2)/getattr(A_contents,'emity'), 'alpha_x':getattr(A_contents,'alphax'),'alpha_y':getattr(A_contents,'alphay'),
             'emit_x':getattr(A_contents,'emitx')/getattr(A_contents,'gamma0'),'emit_y' : getattr(A_contents,'emity')/getattr(A_contents,'gamma0'),'emit_xn':getattr(A_contents,'emitx'),'emit_yn':getattr(A_contents,'emity'),
              'x' :  0.000000e+00,'y' : 0.000000e+00,'px':0,'py':0,'I':getattr(A_contents,'curpeak'),'tpulse':1e15*(getattr(A_contents,'curlen')/speed_of_light)}
                 
@@ -339,7 +339,8 @@ class FEL_simulation_block(object):
             inp.lat =A_undulator['Magnetic Lattice'] 
             inp.latticefile = inp_file+'.lat'
             setattr(inp,'magin',1)
-            inp = self.beta_matching(inp,inp.run_dir)
+            if self.parameter !='aw0':
+                inp = self.beta_matching(inp,inp.run_dir)
             if inp.edist!=None:
                 inp0=inp
                 for i_tw in getattr(self,'tw_match'):
@@ -372,13 +373,13 @@ class FEL_simulation_block(object):
         else:
             run_range=run_inp
         if itdp ==True:
-            param_inp = ['energy','spec','bunching','el_e_spread','xrms','yrms']
+            param_inp = ['energy','spec','bunching','el_energy','el_e_spread','xrms','yrms']
             s_inp=['max','mean']
             z_inp=[0,'end'] 
             n_seeds = len([self.file_pout+'scan_'+str(run_range[0])+'/'+files for files in os.listdir(self.file_pout+'scan_'+str(run_range[0])) if files.startswith('ip_s')])
             n_totl=int(n_seeds)*int(len(run_range))
         else:
-            param_inp=['el_e_spread','bunching','el_e_spread','xrms','yrms']
+            param_inp=['el_e_spread','bunching','el_energy','xrms','yrms','p_int']
             z_inp=[0,'end']
             s_inp=['max','mean'] 
             n_totl = len(run_inp)
@@ -534,7 +535,7 @@ class FEL_simulation_block(object):
         #Plot distribution
         if getattr(inp,'edist')!=None:
             plot_edist(getattr(inp,'edist'),figsize=12,savefig=True,showfig=False)
-        elif getattr(inp,'beam')!=None:
+        elif getattr(inp,'beam')!=None and hasattr(inp.edist,'I') and hasattr(inp.beam,'eloss'):
             plot_beam(getattr(inp,'beam'),figsize=10,savefig=True,showfig=False)
         # Power , electron and radiation plots
 
@@ -555,6 +556,12 @@ class FEL_simulation_block(object):
             self.file_pout=self.file_pout+'/'
         
         inp_arr = []
+        A_bbeam = ['rxbeam','rybeam','emitx','emity','alphax','alphay','xbeam','ybeam','pxbeam','pybeam']
+        A_simul = ['npart','ncar','zsep','delz','dmpfld','fbess0','dgrid','rmax0','xkx','xky','iwityp',
+                   'nptr','lbc','zrayl','zstop','zwaist','delgam','xlamd','nscr','nscz','curpeak',
+                   'iphsty','nharm','curlen','nbins','gamma0','isravg','isrsig','eloss','version',
+                   'multconv','imagl','convharm','idril','ffspec','ndcut','ibfield']
+        A_td = ['itdp','prad0','shotnoise']
         A_und = ['quadd', 'quadf','fl','dl','drl','nsec','nwig','aw0', 'awd']
 
         print('++++ Output Path {0} ++++++'.format(self.file_pout))
@@ -599,16 +606,17 @@ class FEL_simulation_block(object):
         inp = generate_input(A_undulator['Undulator Parameters'],A_beam,itdp=i_tdp)
         
         # Overwrite the simulation attributes of the input object with the ones defined in the input file
-        for key in A_input.__dict__: 
-            if (key != 'rxbeam') or (key !='rybeam') or (key != 'alphax') or (key !='alphay') and (key!= 'magin') and (key!='xlamds'):
+        for key in A_input.__dict__:
+            if (key in A_simul) or (key in A_und) or (key in A_td) or (key =='xlamds'):
                 setattr(inp,key, getattr(A_input,key))
+        
+        # Set up some input parameters
         if getattr(inp,'itdp')==0:
             setattr(inp,'type','steady')
         else:
-            setattr(inp,'type','tdp') 
-        setattr(inp, 'f1st', int(getattr(inp, 'fl') / 2))
+            setattr(inp,'type','tdp')
         setattr(inp, 'awd', float(getattr(inp, 'aw0')))
-        
+
         # idump attribute
         if (getattr(self,'idump')) == 1:
             setattr(inp,'idump',1)
@@ -647,8 +655,11 @@ class FEL_simulation_block(object):
             setattr(inp,'nslice',getattr(A_input,'nslice'))
         else:
             beamf = getattr(inp,'beam')
-            setattr(inp,'curlen', getattr(beamf,tpulse) * speed_of_light / 1e15)
-            setattr(inp,'nslice',8 * int(inp.curlen / inp.zsep / inp.xlamds))
+            if hasattr(beamf,'I'):
+                setattr(inp,'curlen', getattr(beamf,tpulse) * speed_of_light / 1e15)
+                setattr(inp,'nslice',8 * int(inp.curlen / inp.zsep / inp.xlamds))
+            else:
+                setattr(inp,'nslice',getattr(A_input,'nslice'))
 
         if (getattr(self,'i_edist')==1) or (getattr(self,'i_match')==1):
             setattr(inp,'ntail',0)
@@ -660,6 +671,7 @@ class FEL_simulation_block(object):
             inp = self.GEN_rewrite_par(inp)
         else:
             pass
+
         # Running over noise realisations and/or scan parameters
         for n_par in s_scan:
             for run_id in run_ids:           
