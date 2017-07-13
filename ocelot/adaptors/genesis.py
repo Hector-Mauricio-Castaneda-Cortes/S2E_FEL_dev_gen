@@ -1013,7 +1013,7 @@ def run_genesis(inp, launcher, read_level=2, assembly_ver='pyt', debug=1):
     os.system('rm -rf ' + inp.run_dir + 'tmp.cmd')
     # create and fill necessary input files
     if inp.latticefile == None:
-        if inp.lat != None: #HMCC (running without creating lattice file, read input file)
+        if inp.lat != None:
             if debug > 1:
                 print ('    writing ' + inp_file + '.lat')
             open(inp_path + '.lat', 'w').write(generate_lattice(inp.lat, unit=inp.xlamd*inp.delz, energy=inp.gamma0 * m_e_GeV))
@@ -1326,11 +1326,7 @@ def generate_input(up, beam, itdp=False):
     #inp.nsec = 20
 
     inp.xlamd = up.lw
-    if inp.iwityp==0:#HMCC
-        fac_typ= np.sqrt(0.5)#HMCC
-    elif inp.iwityp==1:#HMCC
-        fac_typ = 1#HMCC
-    inp.aw0 = up.K * fac_typ#HMCC
+    inp.aw0 = up.K #HMCC
     inp.awd = inp.aw0
     inp.delgam = beam.sigma_E / m_e_GeV
     inp.gamma0 = beam.E / m_e_GeV
@@ -2533,8 +2529,11 @@ def read_beam_file(filePath, debug=1):
 
     beam.z = np.array(beam.column_values['ZPOS'])
     beam.zsep = beam.z[1] - beam.z[0]
-    beam.I = np.array(beam.column_values['CURPEAK'])
-    beam.idx_max = np.argmax(beam.I)
+    try:#HMCC
+        beam.I = np.array(beam.column_values['CURPEAK'])
+        beam.idx_max = np.argmax(beam.I)
+    except:#HMCC
+        pass #HMCC
 
     dict = {'ex'}
 
@@ -2559,7 +2558,10 @@ def read_beam_file(filePath, debug=1):
     try:
         beam.eloss = np.array(beam.column_values['ELOSS'])
     except:
-        beam.eloss = np.zeros_like(beam.I)
+        if hasattr(beam,'I'):#HMCC
+            beam.eloss = np.zeros_like(beam.I)
+        else:#HMCC
+            pass#HMCC
 
     beam.filePath = filePath
 
@@ -3055,20 +3057,28 @@ def generate_lattice(lattice, unit=1.0, energy=None, debug=False, min_phsh = Fal
     prevLen = 0
     prevPosQ = 0
     prevLenQ = 0
-
+    
     pos = 0
+    sum_prev = 0 #HMCC
 
     drifts = []
     quads = []
     
     gamma = energy / m_e_GeV
-
+    
+    for el in lattice.sequence:#HMCC Summing over the elements of the lattice before the 1st undulator (f1st)
+        if el.__class__ !=Undulator:#HMCC  
+            sum_prev = sum_prev+el.l#HMCC
+        else:# HMCC
+            break #HMCC
+    
     for e in lattice.sequence:
 
         l = float(e.l)
-        
+
         # print e.type, pos, prevPos
         if e.__class__ == Undulator:
+                
             l = float(e.nperiods) * float(e.lperiod)
 
             undLat += 'AW' + '    ' + str(e.Kx * np.sqrt(0.5)) + '   ' + str(round(l / unit, 2)) + '  ' + str(round((pos - prevPos - prevLen) / unit, 2)) + '\n'
@@ -3092,6 +3102,10 @@ def generate_lattice(lattice, unit=1.0, energy=None, debug=False, min_phsh = Fal
                     driftLat += 'AD' + '    ' + str(K_rms_add) + '   ' + str(round((L) / unit, 2)) + '  ' + str(round(prevLen / unit, 2)) + '\n'
                 else:
                     driftLat += 'AD' + '    ' + str(K_rms) + '   ' + str(round((L) / unit, 2)) + '  ' + str(round(prevLen / unit, 2)) + '\n'
+            else:#HMCC in case the first element is not an undulator.
+                K_rms = e.Kx * np.sqrt(0.5) #HMCC
+                driftLat += 'AD' + '    ' + str(K_rms) + '   ' + str(round((2*sum_prev) / unit, 2)) + '  ' + str(round((l+sum_prev) / unit, 2)) + '\n'#HMCC
+                
             
             prevPos = pos
             prevLen = l
