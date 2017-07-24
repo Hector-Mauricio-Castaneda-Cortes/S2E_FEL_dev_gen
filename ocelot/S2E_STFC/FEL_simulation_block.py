@@ -5,6 +5,8 @@ HMCC: 25-05-17 Reimplementation of the FEL simulation block (creation of class w
 HMCC: 04-07-17 Fixing bugs of time window (reading nslice from input file)
 HMCC: 12-07-17: Fixing bugs reading from input file, adding support to read beam file and fixing bugs 
                of reading existent beam file.
+HMCC: 21-07-17: Gixing bug related to centering when an ASTRA file is read. Fixing quad scan bug. Add slice plot when
+                a distribution is given (via ASTRA or existent dist file)
 '''
 #################################################
 ### import of all modules that are required.
@@ -91,7 +93,7 @@ class FEL_simulation_block(object):
                     splitLine[-1] = splitLine[-1].replace('E+','e').replace('E-','e-').replace('\n','').replace('\r','').rstrip()
                     if(splitLine[0][:].endswith('file') and splitLine[0][:].startswith('mag')):
                         val_attr = str(splitLine[-1])
-                    elif (splitLine[0].startswith('$n')) or (splitLine[0].find('filetype')!=-1):
+                    elif (splitLine[0].startswith('$n')) or (splitLine[0].find('filetype')!=-1) or (splitLine[0].find('distfile')!=-1) or (splitLine[0].find('beamfile')!=-1):
                         continue
                     elif(splitLine[0].startswith('$end')):
                         break
@@ -217,9 +219,9 @@ class FEL_simulation_block(object):
         inp2 = self.read_GEN_input_file()
         for params in A_params:
             if getattr(inp0,params)==getattr(inp2,params):
-                print('Betamatch did not work')
+                print('Betamatch not change parameters')
             else:
-                print('Betamatch worked')
+                print('Betamatch changed parameters')
                 setattr(inp0,params,getattr(inp2,params))
         os.remove(f_path+'/beta_input_file.in')
         os.remove(f_path+'/TEMPLATE.IN')
@@ -230,7 +232,6 @@ class FEL_simulation_block(object):
     def rematch_edist(self,inp):
         from ocelot.adaptors.genesis import rematch_edist
         from ocelot.cpbd.beam import Twiss
-        from ocelot.gui.genesis_plot import plot_edist 
         
         tw = Twiss()        
         inp_out = inp
@@ -243,11 +244,10 @@ class FEL_simulation_block(object):
     
     def convert_ASTRA_edist(self,inp):       
         from ocelot.adaptors.genesis import read_astra_dist, astra2edist
-        from ocelot.gui.genesis_plot import plot_edist 
         
         inp_out = inp
         edist = read_astra_dist(getattr(self,'astra_file'))
-        edist = astra2edist(edist, center=0)
+        edist = astra2edist(edist, center=1)
         setattr(edist,'filePath',getattr(self,'file_pout')+'read_edist_astra')
         setattr(inp_out,'edist',edist)
         return inp_out 
@@ -260,7 +260,6 @@ class FEL_simulation_block(object):
     
     def GEN_existent_beam_dist_dpa_rad(self,in_p,flag_bd):
         from ocelot.adaptors.genesis import read_beam_file, read_edist_file, read_rad_file, read_dpa_file,read_dfl_file
-        from ocelot.gui.genesis_plot import plot_edist, plot_beam
 
         inp = in_p
         if flag_bd == 'beam':
@@ -325,19 +324,18 @@ class FEL_simulation_block(object):
                     n_par = int(n_p)
                     if self.parameter in A_undl[0:2]:
                         for j_quad in A_undl[0:2]:
-                            if j_quad =='quadd':
-                                n_par = -n_par
-                            else:
-                                n_par = n_par
                             setattr(A_inpt,str(j_quad),n_par)
+                            setattr(inp,str(j_quad),n_par)
                     else:
                         setattr(A_inpt,self.parameter,n_par)
+                        setattr(inp,self.parameter,n_par)
             else:
                 n_par =float(n_p)
                 setattr(A_inpt,self.parameter,n_p)
+                setattr(inp,self.parameter,n_p)
             A_undulator=self.undulator_design(A_inpt)
-            inp.lat =A_undulator['Magnetic Lattice'] 
-            inp.latticefile = inp_file+'.lat'
+            setattr(inp,'lat',A_undulator['Magnetic Lattice'])
+            setattr(inp,'latticefile',inp_file+'.lat')
             setattr(inp,'magin',1)
             if self.parameter !='aw0':
                 inp = self.beta_matching(inp,inp.run_dir)
@@ -351,7 +349,7 @@ class FEL_simulation_block(object):
             n_par = float(n_p) 
             setattr(A_inpt,self.parameter,n_p)
             setattr(inp,self.parameter,n_p)
-            inp.lat = A_undulator['Magnetic Lattice']
+            setattr(inp,'lat',A_undulator['Magnetic Lattice'])
             setattr(inp,'magin',1)
         return inp
         
@@ -529,12 +527,15 @@ class FEL_simulation_block(object):
         return fig
         
     def post_processing(self,inp,s_scan_inp):  
-       
+        from ocelot.adaptors.genesis import edist2beam
         plt.rcParams['text.usetex']=False
         plt.rcParams['text.latex.unicode']=False
         #Plot distribution
         if getattr(inp,'edist')!=None:
-            plot_edist(getattr(inp,'edist'),figsize=12,savefig=True,showfig=False)
+            plot_edist(getattr(inp,'edist'),figsize=12,savefig=True,showfig=False) 
+            bfd_b = edist2beam(getattr(inp,'edist'),step=float(10.0*getattr(inp,'xlamds')))
+            setattr(bfd_b,'filePath',self.file_pout+'slice_edist')
+            plot_beam(bfd_b,savefig=True,showfig=False)
         elif getattr(inp,'beam')!=None and hasattr(inp.edist,'I') and hasattr(inp.beam,'eloss'):
             plot_beam(getattr(inp,'beam'),figsize=10,savefig=True,showfig=False)
         # Power , electron and radiation plots
@@ -607,7 +608,7 @@ class FEL_simulation_block(object):
         
         # Overwrite the simulation attributes of the input object with the ones defined in the input file
         for key in A_input.__dict__:
-            if (key in A_simul) or (key in A_und) or (key in A_td) or (key =='xlamds'):
+            if (key in A_simul) or (key in A_und) or (key in A_td) or (key =='xlamds') or (key == 'f1st'):
                 setattr(inp,key, getattr(A_input,key))
         
         # Set up some input parameters
