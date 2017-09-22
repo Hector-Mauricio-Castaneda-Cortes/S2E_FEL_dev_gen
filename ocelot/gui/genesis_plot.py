@@ -18,7 +18,6 @@ import matplotlib
 # # force matplotlib not ot use Xwindows backend. plots may still be plotted into e.g. *.png
 # matplotlib.use('Agg')
 from matplotlib.ticker import ScalarFormatter #HMCC
-import numpy as np
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy import *
@@ -31,9 +30,10 @@ from ocelot.utils.xfel_utils import *
 from matplotlib import rc, rcParams
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
+def_cmap = 'viridis'
 
 fntsz = 4
-params = {'image.cmap': 'jet', 'backend': 'ps', 'axes.labelsize': 3 * fntsz, 'font.size': 3 * fntsz, 'legend.fontsize': 4 * fntsz, 'xtick.labelsize': 4 * fntsz,  'ytick.labelsize': 4 * fntsz, 'text.usetex': False}
+params = {'image.cmap': def_cmap, 'backend': 'ps', 'axes.labelsize': 3 * fntsz, 'font.size': 3 * fntsz, 'legend.fontsize': 4 * fntsz, 'xtick.labelsize': 4 * fntsz,  'ytick.labelsize': 4 * fntsz, 'text.usetex': False}
 rcParams.update(params)
 # plt.rc('grid', color='0.75', linestyle='-', linewidth=0.5)
 # rcParams["savefig.directory"] = os.chdir(os.path.dirname(__file__)) but __file__ appears to be genesis_plot
@@ -122,6 +122,8 @@ def plot_gen_out_all(handle=None, savefig='png', showfig=False, choice=(1, 1, 1,
     for handle in handles:
 
         if os.path.isfile(str(handle)):
+            print('')
+            print('plotting ',handle)
             handle = read_out_file(handle, read_level=2, debug=debug)
 
         if isinstance(handle, GenesisOutput):
@@ -137,11 +139,14 @@ def plot_gen_out_all(handle=None, savefig='png', showfig=False, choice=(1, 1, 1,
                 for z in arange(choice[4], max(handle.z), choice[4]):
                     plot_gen_out_z(handle, z=z, showfig=showfig, savefig=savefig, debug=debug)
             if choice[11]:
-                W=wigner_out(handle)
-                plot_wigner(W, showfig=showfig, savefig=savefig, debug=debug)
+                try:
+                    W=wigner_out(handle)
+                    plot_wigner(W, showfig=showfig, savefig=savefig, debug=debug)
+                except:
+                    pass
             if choice[12]:
                 try:
-                    plot_dpa_bucket_out(handle,scatter=0,slice_pos='max_P',repeat=3, showfig=showfig, savefig=savefig, cmap='jet')
+                    plot_dpa_bucket_out(handle,scatter=0,slice_pos='max_P',repeat=3, showfig=showfig, savefig=savefig, cmap=def_cmap)
                 except IOError:
                     pass
 
@@ -277,6 +282,7 @@ def plot_gen_out_z(g, figsize=(10, 14), legend=True, fig_name=None, z=inf, savef
     # ax_energy.ticklabel_format(axis='y', style='sci', scilimits=(-3, 3), useOffset=False)
     ax_energy.ticklabel_format(useOffset=False, style='plain')
     ax_energy.grid(True)
+    # plt.yticks(plt.yticks()[0][0:-1])
 
     ax_bunching = ax_energy.twinx()
     ax_bunching.plot(s, g.bunching[:, zi], 'grey', linewidth=0.5)
@@ -288,12 +294,12 @@ def plot_gen_out_z(g, figsize=(10, 14), legend=True, fig_name=None, z=inf, savef
     power = np.pad(g.p_mid, [(int(g.nSlices / 2) * n_pad, (g.nSlices - (int(g.nSlices / 2)))) * n_pad, (0, 0)], mode='constant')
     phase = np.pad(g.phi_mid, [(int(g.nSlices / 2) * n_pad, (g.nSlices - (int(g.nSlices / 2)))) * n_pad, (0, 0)], mode='constant')  # not supported by the numpy 1.6.2
 
-    spectrum = abs(np.fft.fft(np.sqrt(np.array(power)) * np.exp(1.j * np.array(phase)), axis=0))**2 / sqrt(g.nSlices) / (2 * g.leng / g('ncar'))**2 / 1e10
-    e_0 = 1239.8 / g('xlamds') / 1e9
-    g.freq_ev1 = h_eV_s * np.fft.fftfreq(len(spectrum), d=g('zsep') * g('xlamds') * g('ishsty') / speed_of_light) + e_0
-    lamdscale = 1239.8 / g.freq_ev1
+    # spectrum = abs(np.fft.fft(np.sqrt(np.array(power)) * np.exp(1.j * np.array(phase)), axis=0))**2 / sqrt(g.nSlices) / (2 * g.leng / g('ncar'))**2 / 1e10
+    # e_0 = 1239.8 / g('xlamds') / 1e9
+    # g.freq_ev1 = h_eV_s * np.fft.fftfreq(len(spectrum), d=g('zsep') * g('xlamds') * g('ishsty') / speed_of_light) + e_0
+    # lamdscale = 1239.8 / g.freq_ev1
 
-    lamdscale_array = np.swapaxes(np.tile(lamdscale, (g.nZ, 1)), 0, 1)
+    # lamdscale_array = np.swapaxes(np.tile(lamdscale, (g.nZ, 1)), 0, 1)
 
     # for std calculation
     # spectrum_lamdpos=np.sum(spectrum*lamdscale_array/np.sum(spectrum,axis=0),axis=0)
@@ -309,14 +315,26 @@ def plot_gen_out_z(g, figsize=(10, 14), legend=True, fig_name=None, z=inf, savef
     ax_spectrum.get_yaxis().get_major_formatter().set_scientific(True)
     ax_spectrum.get_yaxis().get_major_formatter().set_powerlimits((-3, 4))  # [:,75,75]
     ax_spectrum.grid(True)
-    if np.amin(lamdscale) != np.amax(lamdscale):
-        ax_spectrum.set_xlim([np.amin(lamdscale), np.amax(lamdscale)])
+    if np.amin(g.freq_lamd) != np.amax(g.freq_lamd):
+        ax_spectrum.set_xlim([np.amin(g.freq_lamd), np.amax(g.freq_lamd)])
     ax_phase.set_xlabel(r's [$\mu$m]')
 
-    maxspectrum_index = np.argmax(spectrum[:, zi])
+    maxspectrum_index = np.argmax(g.spec[:, zi])
     maxspower_index = np.argmax(power[:, zi])
-    maxspectrum_wavelength = lamdscale[maxspectrum_index] * 1e-9
-    ax_spectrum.text(0.02, 0.98, r"$\lambda_{max}$= %.3f nm" % (maxspectrum_wavelength * 1e9), fontsize=12, horizontalalignment='left', verticalalignment='top', transform=ax_spectrum.transAxes, color='red')  # horizontalalignment='center', verticalalignment='center',
+    maxspectrum_wavelength = g.freq_lamd[maxspectrum_index] * 1e-9
+    
+    spectrum_lamdwidth_fwhm = None
+    if np.sum(g.spec[:,zi])!=0:
+        pos, width, arr = fwhm3(g.spec[:, zi])
+        if width != None:
+            if arr[0] == arr[-1]:
+                dlambda = abs(g.freq_lamd[pos] - g.freq_lamd[pos-1])
+            else:
+                dlambda = abs( (g.freq_lamd[arr[0]] - g.freq_lamd[arr[-1]]) / (arr[0] - arr[-1]) )
+            spectrum_lamdwidth_fwhm = dlambda * width / g.freq_lamd[pos]  # the FWHM of spectral line (error when peakpos is at the edge of lamdscale)
+
+    if spectrum_lamdwidth_fwhm is not None and maxspectrum_wavelength is not None:
+        ax_spectrum.text(0.02, 0.98, r"$\lambda_{max}$= %.4e m " "\n" "$(\Delta\lambda/\lambda)_{fwhm}$= %.2e" % (maxspectrum_wavelength, spectrum_lamdwidth_fwhm), fontsize=12, horizontalalignment='left', verticalalignment='top', transform=ax_spectrum.transAxes, color='red')  # horizontalalignment='center', verticalalignment='center',
 
     phase = unwrap(g.phi_mid[:, zi])
 
@@ -330,6 +348,7 @@ def plot_gen_out_z(g, figsize=(10, 14), legend=True, fig_name=None, z=inf, savef
     ax_phase.set_ylabel(r'$\phi$ [rad]')
     ax_phase.set_ylim([-pi, pi])
     ax_phase.grid(True)
+    # plt.yticks(plt.yticks()[0][0:-1])
 
     # ax_spectrum.yaxis.major.locator.set_params(nbins=number_ticks)
 
@@ -387,7 +406,7 @@ def plot_gen_out_ph(g, legend=False, figsize=4, fig_name='Radiation', savefig=Fa
     else:
         fig = plot_gen_out_evo(g, params=['rad_pow', 'rad_size'], figsize=figsize, legend=legend, fig_name=fig_name, savefig=savefig, showfig=showfig, debug=debug)
 
-def plot_gen_out_evo(g, params=['und_quad', 'el_size', 'el_energy', 'el_bunching', 'rad_pow_en', 'rad_spec', 'rad_size', 'rad_spec_evo_n', 'rad_pow_evo_n'], figsize=4, legend=False, fig_name=None, savefig=False, showfig=False, debug=1):
+def plot_gen_out_evo(g, params=['und_quad', 'el_size', 'el_energy', 'el_bunching', 'rad_pow_en', 'rad_spec', 'rad_size', 'rad_spec_evo_n', 'rad_pow_evo_n'], figsize=4, legend=False, fig_name=None, savefig=False, showfig=True, debug=1):
     '''
     plots evolution of given parameters from genesis output with undulator length
     '''
@@ -444,7 +463,15 @@ def plot_gen_out_evo(g, params=['und_quad', 'el_size', 'el_energy', 'el_bunching
         elif param == 'el_bunching':
             subfig_el_bunching(ax[-1], g, legend)
         elif param == 'rad_pow_en':
-            subfig_rad_pow_en(ax[-1], g, legend)
+            if not is_tdp:
+                subfig_rad_pow(ax[-1], g, legend)
+            else:
+                subfig_rad_pow_en(ax[-1], g, legend)
+        elif param == 'rad_pow_en_nolog':
+            if not is_tdp:
+                subfig_rad_pow(ax[-1], g, legend, log=0)
+            else:
+                subfig_rad_pow_en(ax[-1], g, legend, log=0)
         elif param == 'rad_pow':
             subfig_rad_pow(ax[-1], g, legend)
         elif param == 'rad_size':
@@ -452,6 +479,9 @@ def plot_gen_out_evo(g, params=['und_quad', 'el_size', 'el_energy', 'el_bunching
         elif param == 'rad_spec':
             if is_tdp:
                 subfig_rad_spec(ax[-1], g, legend)
+        elif param == 'rad_spec_nolog':
+            if is_tdp:
+                subfig_rad_spec(ax[-1], g, legend, log=0)
         elif param == 'rad_spec_evo_n':
             if is_tdp:
                 subfig_rad_spec_evo(ax[-1], g, legend, norm=1)
@@ -597,20 +627,21 @@ def subfig_el_bunching(ax_bunching, g, legend):
     ax_bunching.grid(True)
 
 
-def subfig_rad_pow_en(ax_rad_pow, g, legend, colour='navy', log=0):#HMCC
+def subfig_rad_pow_en(ax_rad_pow, g, legend, colour = 'green', log=1):
     import matplotlib.pyplot as plt
     import numpy as np
     from matplotlib.ticker import ScalarFormatter #HMCC
-    
-    frmt = ScalarFormatter(useOffset = False)#HMCC   
+
+    frmt = ScalarFormatter(useOffset = False)#HMCC
     frmt.set_scientific(True)#HMCC
 
-    ax_rad_pow.plot(g.z, np.amax(g.p_int, axis=0), '-',color =colour, linewidth=1.5)#HMCC
+    ax_rad_pow.plot(g.z, np.amax(g.p_int, axis=0), '-',color =colour, linewidth=1.5)
     ax_rad_pow.set_ylabel(r'P [W]')
-    #ax_rad_pow.get_yaxis().get_major_formatter().set_useOffset(False)HMCC comment
+    #ax_rad_pow.get_yaxis().get_major_formatter().set_useOffset(False) HMCC comment
     #ax_rad_pow.get_yaxis().get_major_formatter().set_scientific(True) HMCC comment
     if np.amax(g.p_int) > 0 and log:
         ax_rad_pow.set_yscale('log')
+    plt.yticks(plt.yticks()[0][0:-1])
 
     ax_rad_en = ax_rad_pow.twinx()
     ax_rad_en.plot(g.z, g.energy, 'k--', linewidth=1.5)
@@ -619,6 +650,7 @@ def subfig_rad_pow_en(ax_rad_pow, g, legend, colour='navy', log=0):#HMCC
     #ax_rad_en.get_yaxis().get_major_formatter().set_scientific(True)
     if np.amax(g.p_int) > 0 and log:
         ax_rad_en.set_yscale('log')
+    plt.yticks(plt.yticks()[0][0:-1])
 
     ax_rad_pow.grid(True)  # , which='minor')
     # ax_rad_pow.grid(False, which="minor")
@@ -634,58 +666,92 @@ def subfig_rad_pow_en(ax_rad_pow, g, legend, colour='navy', log=0):#HMCC
     ax_rad_pow.text(0.98, 0.02, r'$P_{end}$= %.2e W ' '\n' r'$E_{end}$= %.2e J' % (np.amax(g.p_int[:, -1]), np.mean(g.p_int[:, -1], axis=0) * g('xlamds') * g('zsep') * g.nSlices / speed_of_light), fontsize=12, horizontalalignment='right', verticalalignment='bottom', transform=ax_rad_pow.transAxes)
 
 
-def subfig_rad_pow(ax_rad_pow, g, legend,colour='red', log=1):#HMCC
+def subfig_rad_pow(ax_rad_pow, g, legend,colour='green', log=1):#HMCC
     from matplotlib.ticker import ScalarFormatter #HMCC
-    frmt = ScalarFormatter(useOffset = False)#HMCC   
+    frmt = ScalarFormatter(useOffset = False) #HMCC
     frmt.set_scientific(True)#HMCC
-    ax_rad_pow.plot(g.z, np.amax(g.p_int, axis=0), '-',color=colour, linewidth=1.5)#HMCC
+
+    ax_rad_pow.plot(g.z, np.amax(g.p_int, axis=0), '-',color=colour, linewidth=1.5)
     ax_rad_pow.set_ylabel('P [W]')
     #ax_rad_pow.get_yaxis().get_major_formatter().set_useOffset(False)
     #ax_rad_pow.get_yaxis().get_major_formatter().set_scientific(True)
     if np.amax(g.p_int) > 0 and log:
         ax_rad_pow.set_yscale('log')
+    plt.yticks(plt.yticks()[0][0:-1])
 
     ax_rad_pow.grid(False)  # , which='minor')
     ax_rad_pow.tick_params(axis='y', which='both', colors='g')
     ax_rad_pow.yaxis.label.set_color('g')
     ax_rad_pow.yaxis.get_offset_text().set_color(ax_rad_pow.yaxis.label.get_color())
-    # ax_rad_pow.set_ylim([1e5,1e11])
     ax_rad_pow.text(0.98, 0.02, r'$P_{end}$= %.2e W' % (np.amax(g.p_int[:, -1])), fontsize=12, horizontalalignment='right', verticalalignment='bottom', transform=ax_rad_pow.transAxes)
 
 
-def subfig_rad_spec(ax_spectrum, g, legend,colour='green', log=1):#HMCC
-    ax_spectrum.plot(g.z, np.amax(g.spec, axis=0), color=colour, linewidth=1.5)#HMCC
+def subfig_rad_spec(ax_spectrum, g, legend,colour='red', log=1):#HMCC
+    ax_spectrum.plot(g.z, np.amax(g.spec, axis=0), '-',color=colour, linewidth=1.5)
     ax_spectrum.text(0.5, 0.98, r"(on axis)", fontsize=10, horizontalalignment='center', verticalalignment='top', transform=ax_spectrum.transAxes)  # horizontalalignment='center', verticalalignment='center',
     ax_spectrum.set_ylabel(r'P$(\lambda)_{max}$ [a.u.]')
-    # if np.amin(np.amax(spectrum,axis=0))>0:
+    plt.yticks(plt.yticks()[0][0:-1])
+    
     if np.amax(np.amax(g.spec, axis=0)) > 0 and log:
         ax_spectrum.set_yscale('log')
     ax_spectrum.grid(True)
-
+    
     spectrum_lamdwidth_fwhm = np.zeros_like(g.z)
     spectrum_lamdwidth_std = np.zeros_like(g.z)
+    
     for zz in range(g.nZ):
-        # if np.sum(g.spec[:,zz])!=0:
-        #tmp
-        try:
-            peak = fwhm3(g.spec[:, zz])
-            spectrum_lamdwidth_fwhm[zz] = abs(g.freq_lamd[0] - g.freq_lamd[1]) * peak[1] / g.freq_lamd[peak[0]]  # the FWHM of spectral line (error when paekpos is at the edge of lamdscale)
-        except:
-            spectrum_lamdwidth_fwhm[zz] = 0
-
-        try:
+        spectrum_lamdwidth_fwhm[zz] = None
+        spectrum_lamdwidth_std[zz] = None
+        if np.sum(g.spec[:,zz])!=0:
+            pos, width, arr = fwhm3(g.spec[:, zz])
+            if width != None:
+                if arr[0] == arr[-1]:
+                    dlambda = abs(g.freq_lamd[pos] - g.freq_lamd[pos-1])
+                else:
+                    dlambda = abs( (g.freq_lamd[arr[0]] - g.freq_lamd[arr[-1]]) / (arr[0] - arr[-1]) )
+                spectrum_lamdwidth_fwhm[zz] = dlambda * width / g.freq_lamd[pos]  
+                # spectrum_lamdwidth_fwhm[zz] = abs(g.freq_lamd[arr[0]] - g.freq_lamd[arr[-1]]) / g.freq_lamd[pos]  # the FWHM of spectral line (error when peakpos is at the edge of lamdscale)
+            
             spectrum_lamdwidth_std[zz] = std_moment(g.freq_lamd, g.spec[:, zz]) / n_moment(g.freq_lamd, g.spec[:, zz], 0, 1)
-        except:
-            spectrum_lamdwidth_std[zz] = 0
+
+        # try:
+            # peak = fwhm3(g.spec[:, zz])
+            # spectrum_lamdwidth_fwhm[zz] = abs(g.freq_lamd[0] - g.freq_lamd[1]) * peak[1] / g.freq_lamd[peak[0]]  # the FWHM of spectral line (error when paekpos is at the edge of lamdscale)
+        # except:
+            # spectrum_lamdwidth_fwhm[zz] = 0
+
+        # try:
+            # spectrum_lamdwidth_std[zz] = std_moment(g.freq_lamd, g.spec[:, zz]) / n_moment(g.freq_lamd, g.spec[:, zz], 0, 1)
+        # except:
+            # spectrum_lamdwidth_std[zz] = 0
 
     ax_spec_bandw = ax_spectrum.twinx()
-    ax_spec_bandw.plot(g.z, spectrum_lamdwidth_fwhm * 100, 'm:', label="fwhm")
-    ax_spec_bandw.plot(g.z, spectrum_lamdwidth_std * 100, 'm--', label="std")
+    ax_spec_bandw.plot(g.z, spectrum_lamdwidth_fwhm * 100, 'm--', label="fwhm")
+    ax_spec_bandw.plot(g.z, 2*spectrum_lamdwidth_std * 100, 'm:', label="std")
     ax_spec_bandw.grid(False)
+    plt.yticks(plt.yticks()[0][0:-1])
+    ax_spec_bandw.set_ylim(ymin=0)
+    
     if legend:
         ax_spec_bandw.legend()
-    # ax_spec_bandw.set_ylabel('$2\sigma\lambda$ [nm]')
-    ax_spec_bandw.set_ylabel(r'$\Delta\lambda/\lambda, \%$')
+    ax_spec_bandw.set_ylabel(r'$\Delta\lambda/\lambda, \%$'+'\n'+r'(-- fwhm, $\cdots2\sigma$)')
+    if spectrum_lamdwidth_fwhm[-1] != None:
+        ax_spec_bandw.text(0.98, 0.98, r"$(\Delta\lambda/\lambda)_{end}^{fwhm}$= %.2e"%(spectrum_lamdwidth_fwhm[-1]), fontsize=12, horizontalalignment='right', verticalalignment='top', transform=ax_spec_bandw.transAxes)
+
+    ax_spectrum.yaxis.label.set_color('r')
+    ax_spectrum.tick_params(axis='y', which='both', colors=ax_spectrum.yaxis.label.get_color())
+    ax_spectrum.yaxis.get_offset_text().set_color(ax_spectrum.yaxis.label.get_color())
+    
+    ax_spec_bandw.yaxis.label.set_color('m')
+    ax_spec_bandw.tick_params(axis='y', which='both', colors=ax_spec_bandw.yaxis.label.get_color())
+    ax_spec_bandw.yaxis.get_offset_text().set_color(ax_spec_bandw.yaxis.label.get_color())
+
+    # yticks = ax_spec_bandw.yaxis.get_major_ticks()
+    # # print(yticks)
+    # print (yticks[1].label.get_text())
+    # yticks[1].label.set_text('')
+    # print (yticks[1].label.get_text())
+    
 
 
 def subfig_rad_size(ax_size_t, g, legend):
@@ -705,9 +771,11 @@ def subfig_rad_size(ax_size_t, g, legend):
             ax_size_t.plot(g.z, np.average(g.r_size * 2 * 1e6, weights=weight, axis=0), 'b-', linewidth=1.5)
 
     ax_size_t.set_ylim(ymin=0)
-    ax_size_t.set_ylabel(r'size$_{transv}$ [$\mu$m]')
+    # ax_size_t.set_ylabel(r'$\sim$size$_{transv}$ [$\mu$m]'+'\n'+r'($2\sigma$)')
+    ax_size_t.set_ylabel(r'$\sim$size$_{transv}$ [$\mu$m]'+'\n'+u'(\u2014 $2\sigma$)')
     ax_size_t.grid(True)
-
+    plt.yticks(plt.yticks()[0][0:-1])
+    
     if g.nSlices > 1:
         ax_size_s = ax_size_t.twinx()
         size_long_fwhm = np.zeros_like(g.z)
@@ -715,23 +783,40 @@ def subfig_rad_size(ax_size_t, g, legend):
         s = g.t * speed_of_light * 1.0e-15 * 1e6
         delta_s = (s[1] - s[0])
         for zz in range(g.nZ):
-            # if np.sum(g.spec[:,zz])!=0:
-            try:
-                peak = fwhm3(g.p_int[:, zz])
-                size_long_fwhm[zz] = abs(delta_s) * peak[1]  # the FWHM of spectral line (error when paekpos is at the edge of lamdscale)
-            except:
-                size_long_fwhm[zz] = 0
-
-            try:
+            #size_long_fwhm[zz] = fwhm(g.s,g.p_int[:, zz])
+            if np.sum(g.p_int[:,zz])!=0:
+                # try:
+                _, width, _ = fwhm3(g.p_int[:, zz])
+                if width != None:
+                    size_long_fwhm[zz] = abs(delta_s) * width
+                else:
+                    size_long_fwhm[zz] = None
+                # except:
+                    # size_long_fwhm[zz] = 0
+                
+                # try:
                 size_long_std[zz] = std_moment(s, g.p_int[:, zz])
-            except:
-                size_long_std[zz] = 0
-
-        ax_size_s.plot(g.z, size_long_fwhm, color='navy', linestyle=':', linewidth=1.0, label="fwhm")
-        ax_size_s.plot(g.z, size_long_std, color='navy', linestyle='--', linewidth=1.0, label="std")
+                # except:
+                    # size_long_std[zz] = 0
+            else:
+                size_long_fwhm[zz] = None
+                size_long_std[zz] = None
+            
+        ax_size_s.plot(g.z, size_long_fwhm, color='navy', linestyle='--', linewidth=1.0, label="fwhm")
+        ax_size_s.plot(g.z, 2*size_long_std, color='navy', linestyle=':', linewidth=1.0, label="std")
         ax_size_s.set_ylim(ymin=0)
-        ax_size_s.set_ylabel(r'size$_{long}$ [$\mu$m]')
+        ax_size_s.set_ylabel(r'size$_{long}$ [$\mu$m]'+'\n'+r'(-- fwhm, $\cdots2\sigma$)')
         ax_size_s.grid(False)
+        plt.yticks(plt.yticks()[0][0:-1])
+        
+        ax_size_t.yaxis.label.set_color('b')
+        ax_size_t.tick_params(axis='y', which='both', colors=ax_size_t.yaxis.label.get_color())
+        ax_size_t.yaxis.get_offset_text().set_color(ax_size_t.yaxis.label.get_color())
+        
+        ax_size_s.yaxis.label.set_color('navy')
+        ax_size_s.tick_params(axis='y', which='both', colors=ax_size_s.yaxis.label.get_color())
+        ax_size_s.yaxis.get_offset_text().set_color(ax_size_s.yaxis.label.get_color())
+        
         if legend:
             ax_size_s.legend()
 #        plt.legend('fwhm','std')
@@ -894,7 +979,7 @@ def plot_gen_out_scanned_z(g, figsize=(10, 14), legend=True, fig_name=None, z=in
     return fig
 
 
-def plot_dfl(F, z_lim=[], xy_lim=[], figsize=4, cmap='jet', legend=True, phase=False, far_field=False, freq_domain=False, fig_name=None, auto_zoom=False, column_3d=True, savefig=False, showfig=True, return_proj=False, log_scale=0, debug=1, vartype_dfl=complex64):
+def plot_dfl(F, z_lim=[], xy_lim=[], figsize=4, cmap=def_cmap, legend=True, phase=False, far_field=False, freq_domain=False, fig_name=None, auto_zoom=False, column_3d=True, savefig=False, showfig=True, return_proj=False, log_scale=0, debug=1, vartype_dfl=complex64):
     '''
     Plots dfl radiation object in 3d.
 
@@ -1035,7 +1120,7 @@ def plot_dfl(F, z_lim=[], xy_lim=[], figsize=4, cmap='jet', legend=True, phase=F
     
     F.fld = F.fld.astype(np.complex64)
     xy_proj = F.int_xy()
-    xy_proj_ph = np.zeros_like(xy_proj)  # tmp
+    xy_proj_ph = np.angle(np.sum(F.fld,axis=0))  # tmp  # tmp
     yz_proj = F.int_zy()
     xz_proj = F.int_zx()
     z_proj = F.int_z()
@@ -1055,7 +1140,7 @@ def plot_dfl(F, z_lim=[], xy_lim=[], figsize=4, cmap='jet', legend=True, phase=F
     fig.clf()
     fig.set_size_inches(((3 + 2 * column_3d) * figsize, 3 * figsize), forward=True)
 
-    # cmap = plt.get_cmap('viridis')  # jet inferno viridis #change to convenient
+    # cmap = plt.get_cmap(def_cmap)  # jet inferno viridis #change to convenient
     cmap_ph = plt.get_cmap('hsv')
 
     x_line = xy_proj[:, int((ncar_y - 1) / 2)]
@@ -1072,7 +1157,7 @@ def plot_dfl(F, z_lim=[], xy_lim=[], figsize=4, cmap='jet', legend=True, phase=F
     ax_int.set_title(xy_title, fontsize=15)
     ax_int.set_xlabel(r'' + x_label)
     ax_int.set_ylabel(y_label)
-    if len(z) > 1 and text_present:
+    if size(z) > 1 and text_present:
         ax_int.text(0.01, 0.01, r'$E_{p}$=%.2e J' % (E_pulse), horizontalalignment='left', verticalalignment='bottom', fontsize=12, color='white', transform=ax_int.transAxes)
 
     if phase == True:
@@ -1255,7 +1340,7 @@ def plot_dfl(F, z_lim=[], xy_lim=[], figsize=4, cmap='jet', legend=True, phase=F
         return
 
 
-def plot_gen_stat(proj_dir, run_inp=[], stage_inp=[], param_inp=[], s_param_inp=['p_int', 'energy', 'r_size_weighted', 'spec', 'error'], z_param_inp=['p_int', 'phi_mid_disp', 'spec', 'bunching', 'wigner'], dfl_param_inp=['dfl_spec'], run_param_inp=['p_int', 'spec', 'energy'], s_inp=['max'], z_inp=[0,'end'], run_s_inp=['max'], run_z_inp=['end'], spec_pad=1, savefig=1, saveval=1, showfig=1, debug=1):
+def plot_gen_stat(proj_dir, run_inp=[], stage_inp=[], param_inp=[], s_param_inp=['p_int', 'energy', 'r_size_weighted', 'spec', 'error'], z_param_inp=['p_int', 'phi_mid_disp', 'spec', 'bunching', 'wigner'], dfl_param_inp=['dfl_spec'], run_param_inp=['p_int', 'spec', 'energy'], s_inp=['max'], z_inp=[0,'end'], run_s_inp=['max'], run_z_inp=['end'], spec_pad=1, savefig=1, saveval=1, showfig=0, debug=1):
     '''
     The routine for plotting the statistical info of many GENESIS runs
     
@@ -1272,7 +1357,7 @@ def plot_gen_stat(proj_dir, run_inp=[], stage_inp=[], param_inp=[], s_param_inp=
 
     dfl_power, dfl_spec, dfl_size, dfl_divergence
     '''
-    import copy,os #HMCC
+    import copy, os #HMCC
     rc('text', usetex=False)
     dict_name = {'p_int': 'radiation power', 'energy': 'radiation pulse energy', 'el_e_spread': 'el.beam energy spread', 'el_energy': 'el.beam energy average', 'bunching': 'el.beam bunching', 'spec': 'radiation on-axis spectral density', 'dfl_spec': 'total radiation spectral density', 'r_size': 'radiation transv size', 'r_size_weighted': 'radiation transv size (weighted)', 'xrms': 'el.beam x size', 'yrms': 'el.beam y size', 'error': 'genesis simulation error', 'p_mid': 'radiation power on-axis', 'phi_mid': 'radiation phase on-axis', 'increment': 'radiation power increment'}
     dict_unit = {'p_int': '[W]', 'energy': '[J]', 'el_e_spread': '(gamma)', 'el_energy': '(gamma)', 'bunching': '', 'spec': '[arb.units]', 'dfl_spec': '[arb.units]', 'r_size': '[m]', 'xrms': '[m]', 'yrms': '[m]', 'error': ''}
@@ -1293,10 +1378,11 @@ def plot_gen_stat(proj_dir, run_inp=[], stage_inp=[], param_inp=[], s_param_inp=
 
     for stage in stage_range:  # scan through stages
 
-       # outlist = [GenesisOutput() for i in range(1000)]
+        #outlist = [GenesisOutput() for i in range(1000)]
         outlist=[]#HMCC
+
         if run_inp == []:
-            run_range = range(1000) 
+            run_range = range(1000)
         elif run_inp ==1:#HMCC
             run_range=xrange(1)
         else:
@@ -1304,32 +1390,42 @@ def plot_gen_stat(proj_dir, run_inp=[], stage_inp=[], param_inp=[], s_param_inp=
 
         run_range_good = []
 
-        for irun,runr in enumerate(run_range):#HMCC
-            ip_s=[]#HMCC
-            ip_seed = [proj_dir+'scan_'+str(runr)+'/'+files for files in os.listdir(proj_dir+'scan_'+str(runr)) if files.startswith('ip_s')] # HMCC
-            for i_seed, ipseed in enumerate(ip_seed): #HMCC
-                out_file = [ipseed+'/'+files for files  in os.listdir(ipseed) if ((files.startswith('run.')) and (files.endswith('.gout')))] #HMCC 
-                
-                if os.path.isfile(out_file[0]):#HMCC
-                   # outlist[irun][i_seed] = read_out_file(str(out_file[0]), read_level=2, debug=1)#HMCC
-               # try:
-                    ip_s.append(read_out_file(str(out_file[0]),read_level=2, debug=0))#HMCC
-                    run_range_good.append(irun)#HMCC move
-            outlist.append(ip_s) #HMCC 
-               # except:
-                   # print('     could not read '+out_file)
+        for irun, runr in enumerate(run_range):  # HMCC
+            ip_s = []  # HMCC
+            ip_seed = [proj_dir + 'scan_' + str(runr) + '/' + files for files in os.listdir(proj_dir + 'scan_' + str(runr)) if files.startswith('ip_s')]  # HMCC
+            for i_seed, ipseed in enumerate(ip_seed):  # HMCC
+                out_file = [ipseed + '/' + files for files in os.listdir(ipseed) if ((files.startswith('run.')) and (files.endswith('.gout')))]  # HMCC
+
+                if os.path.isfile(out_file[0]):  # HMCC
+                    # outlist[irun][i_seed] = read_out_file(str(out_file[0]), read_level=2, debug=1)#HMCC
+                    # try:
+                    ip_s.append(read_out_file(str(out_file[0]), read_level=2, debug=0))  # HMCC
+                    run_range_good.append(irun)  # HMCC move
+            outlist.append(ip_s)  # HMCC
+            # except:
+        #for irun in run_range:
+         #   out_file = proj_dir + 'run_' + str(irun) + '/run.' + str(irun) + '.s' + str(stage) + '.gout'
+         #   if os.path.isfile(out_file):
+          #      try:
+          #          outlist[irun] = read_out_file(out_file, read_level=2, debug=1)
+          #          outlist[irun].calc_spec(spec_pad)
+          #          run_range_good.append(irun)
+          #      except:
+          #          print('     could not read '+out_file)
         run_range = run_range_good
+        
         # if len(run_range)!=0 and debug>0:
             # print('stage = ', stage)
+
         # check if all gout have the same number of slices nSlice and history records nZ
         for irun in run_range[1:]:
-            for i_seed in xrange(len(outlist[0])): #HMCC 
-                if outlist[irun][i_seed].nSlices != outlist[run_range[0]][i_seed].nSlices or outlist[irun][i_seed].nZ != outlist[run_range[0]][i_seed].nZ:#HMCC
+            for i_seed in xrange(len(outlist[0])): #HMCC
+                if outlist[irun][i_seed].nSlices != outlist[run_range[0]][i_seed].nSlices or outlist[irun][i_seed].nZ !=outlist[run_range[0]][i_seed].nZ:  # HMCC
                     raise ValueError('Non-uniform out objects')
 
         if run_range == [] or len(run_range) == 1:
-            continue 
-        
+            continue
+
         if debug > 0:
             print('    processing runs ' + str(run_range) + ' of stage ' + str(stage))
 
@@ -1436,9 +1532,10 @@ def plot_gen_stat(proj_dir, run_inp=[], stage_inp=[], param_inp=[], s_param_inp=
             if debug > 0:
                 print('    processing Wigner')
                 for z_ind in z_inp:
+                    print('      z=',z_ind)
                     w = np.zeros((outlist[irun][0].nSlices,outlist[irun][0].nSlices))#HMCC
                     for irun in run_range:
-                        for i_seed, ipseed in enumerate(ip_seed): #HMCC  
+                        for i_seed, ipseed in enumerate(ip_seed): #HMCC
                             out=outlist[irun][i_seed]#HMCC
                             W=wigner_out(out,z=z_ind,debug=0)
                             w += W.wig
@@ -1446,7 +1543,7 @@ def plot_gen_stat(proj_dir, run_inp=[], stage_inp=[], param_inp=[], s_param_inp=
 
                     W.filePath = proj_dir + 'results' + os.path.sep + 'stage_' + str(stage) + '__WIG__' + str(z_ind) + '__m'
                     wig_fig_name = 'stage_' + str(stage) + '__WIG__' + str(z_ind) + '__m'
-                    plot_wigner(W, z=z_ind, p_units='um', s_units='ev', fig_name=wig_fig_name, savefig=savefig, debug=0)
+                    plot_wigner(W, z=z_ind, p_units='um', s_units='ev', fig_name=wig_fig_name, savefig=savefig, showfig=showfig, debug=0)
                     if saveval != False:
                         if debug > 1:
                             print('      saving ' + wig_fig_name + '.txt')
@@ -1517,7 +1614,7 @@ def plot_gen_stat(proj_dir, run_inp=[], stage_inp=[], param_inp=[], s_param_inp=
                         if debug > 1:
                             print('      saving ' + z_fig_name + '.txt')
                         if param == 'spec':
-                            np.savetxt(saving_path + z_fig_name + '.txt', vstack([outlist[irun][0].freq_lamd * 1e9, mean(z_value, 0), z_value]).T, fmt="%E", newline='\n', comments='')#HMCC
+                            np.savetxt(saving_path + z_fig_name + '.txt', vstack([outlist[irun][0].freq_lamd, mean(z_value, 0), z_value]).T, fmt="%E", newline='\n', comments='')#HMCC
                         else:
                             np.savetxt(saving_path + z_fig_name + '.txt', vstack([outlist[irun][0].s * 1e6, mean(z_value, 0), z_value]).T, fmt="%E", newline='\n', comments='')#HMCC
                     if not showfig:
@@ -1541,7 +1638,7 @@ def plot_gen_stat(proj_dir, run_inp=[], stage_inp=[], param_inp=[], s_param_inp=
                     run_fig_name = 'stage_' + str(stage) + '__RUN__' + dict_name.get(param, param).replace(' ', '_').replace('.', '_') + '__' + str(s_ind) + '__um__' + str(z_ind) + '__m'
                     for irun in run_range:
                         for i_seed in xrange(len(outlist[0])):#HMCC
-                            if not hasattr(outlist[irun][i_seed], param):#HMCC
+                            if not hasattr(outlist[irun][i_seed], param):
                                 break
                             else:
                                 if debug > 0:
@@ -1611,15 +1708,15 @@ def plot_gen_stat(proj_dir, run_inp=[], stage_inp=[], param_inp=[], s_param_inp=
             dfl_fig_name = 'stage_' + str(stage) + '__DFL__' + param.replace(' ', '_').replace('.', '_') + '__end'
             for irun in run_range:
                 for i_seed in xrange(len(outlist[0])):
-               # dfl_filePath = proj_dir + 'run_' + str(irun) + '/run.' + str(irun) + '.s' + str(stage) + '.gout.dfl'
-                    dfl_filePath = proj_dir + 'run_' + str(irun)+'/ip_seed_'+str(outlist[irun][i_seed]('ipseed'))+'/run.' + str(irun) + '.s' + '.gout.dfl'#HMCC
+                    # dfl_filePath = proj_dir + 'run_' + str(irun) + '/run.' + str(irun) + '.s' + str(stage) + '.gout.dfl'
+                    dfl_filePath = proj_dir + 'run_' + str(irun) + '/ip_seed_' + str(outlist[irun][i_seed]('ipseed')) + '/run.' + str(irun) + '.s' + '.gout.dfl'  # HMCC
                     dfl = read_dfl_file_out(outlist[irun][i_seed], debug=debug)
                 # dfl=read_dfl_file(dfl_filePath, Nxy=outlist[irun]('ncar'),debug=debug)
                 # read_dfl_file(filePath, Nxy=None, Lxy=None, Lz=None, zsep=None, xlamds=None, vartype=complex,debug=1):
                     dfl = dfl.fld
                     if dfl.shape[0] != 1:
                         ncar_z = dfl.shape[0]
-                        leng_z = outlist[irun]('xlamds') * outlist[irun][i_seed]('zsep') * ncar_z #HMCC
+                        leng_z = outlist[irun][i_seed]('xlamds') * outlist[irun][i_seed]('zsep') * ncar_z #HMCC
                         if param == 'dfl_spec':
                             spec = np.fft.ifftshift(np.fft.fft(dfl, axis=0), 0) / sqrt(ncar_z)
                             spec = abs(spec)**2
@@ -1630,7 +1727,7 @@ def plot_gen_stat(proj_dir, run_inp=[], stage_inp=[], param_inp=[], s_param_inp=
                             freq_scale = 2 * pi / np.linspace(k - dk / 2 * ncar_z, k + dk / 2 * ncar_z, ncar_z) * 1e9
                             if debug > 1:
                                 print('      spectrum calculated')
-                            
+
             if dfl_value != []:
                 fig = plt.figure(dfl_fig_name)
                 fig.clf()
@@ -1786,7 +1883,7 @@ def plot_gen_corr(proj_dir, run_inp=[], p1=(), p2=(), savefig=False, showfig=Tru
 # np.where(out.s>1.8e-6)[0][0]
 
 
-def plot_dpa_bucket_out(out, dpa=None, slice_pos=None, repeat=1, GeV=1, figsize=4, cmap='jet', scatter=True, energy_mean=None, legend=True, fig_name=None, savefig=False, showfig=True, bins=[50,50], debug=1):
+def plot_dpa_bucket_out(out, dpa=None, slice_pos=None, repeat=1, GeV=1, figsize=4, cmap=def_cmap, scatter=True, energy_mean=None, legend=True, fig_name=None, savefig=False, showfig=True, bins=[50,50], debug=1):
     
     if dpa == None:
         dpa=read_dpa_file_out(out)
@@ -1816,7 +1913,7 @@ def plot_dpa_bucket_out(out, dpa=None, slice_pos=None, repeat=1, GeV=1, figsize=
     return plot_dpa_bucket(dpa=dpa, slice_num=slice_num, repeat=repeat, GeV=GeV, figsize=figsize, cmap=cmap, scatter=scatter, energy_mean=energy_mean, legend=legend, fig_name=fig_name, savefig=savefig, showfig=showfig, suffix=suffix, bins=bins, debug=debug)
 
 
-def plot_dpa_bucket(dpa, slice_num=None, repeat=1, GeV=1, figsize=4, cmap='jet', scatter=True, energy_mean=None, legend=True, fig_name=None, savefig=False, showfig=True, suffix='', bins=(50,50), debug=1, return_mode_gamma=0):
+def plot_dpa_bucket(dpa, slice_num=None, repeat=1, GeV=1, figsize=4, cmap=def_cmap, scatter=False, energy_mean=None, legend=True, fig_name=None, savefig=False, showfig=True, suffix='', bins=(50,50), debug=1, return_mode_gamma=0):
     part_colors = ['darkred', 'orange', 'g', 'b', 'm','c','y']
     # cmap='BuPu'
     y_bins = bins[0]
@@ -1834,6 +1931,9 @@ def plot_dpa_bucket(dpa, slice_num=None, repeat=1, GeV=1, figsize=4, cmap='jet',
 
     if shape(dpa.ph)[0] == 1:
         slice_num = 0
+    elif slice_num is None:
+        slice_num = int(shape(dpa.ph)[0]/2)
+        print('      no slice number provided, using middle of the distribution - slice number', slice_num)
     else:
         assert (slice_num <= shape(dpa.ph)[0]), 'slice_num larger than the dpa shape'
 
@@ -1938,8 +2038,8 @@ def plot_dpa_bucket(dpa, slice_num=None, repeat=1, GeV=1, figsize=4, cmap='jet',
         plt.close('all')
 
 
-def plot_edist(edist, figsize=4, fig_name=None, savefig=False, showfig=True, scatter=False, plot_x_y=True, plot_xy_s=True, bins=(50, 50, 50, 50), flip_t=True, s_units='um', e_units='ev', cmin=0, cmap='jet', debug=1):
-    
+def plot_edist(edist, figsize=4, fig_name=None, savefig=False, showfig=True, scatter=False, plot_x_y=True, plot_xy_s=True, bins=(50, 50, 50, 50), flip_t=True, s_units='um', e_units='ev', cmin=0, e_offset=None, cmap=def_cmap, debug=1):
+
     if showfig == False and savefig == False:
         return
     if debug > 0:
@@ -1960,12 +2060,12 @@ def plot_edist(edist, figsize=4, fig_name=None, savefig=False, showfig=True, sca
     fig.set_size_inches(((3+plot_x_y + plot_xy_s) * figsize, 4 * figsize), forward=True)
 
     if s_units == 'fs':
-        s = edist.t * 1e15
+        mult = 1e15
         s_label = 't [fs]'
     elif s_units == 'um':
-        s = edist.t * speed_of_light * 1e6
+        mult = speed_of_light * 1e6
         s_label = 's [$\mu$m]'
-        
+    s = edist.t * mult
     # if flip_t:
         # s = -edist.t * speed_of_light * 1e6
     # else:
@@ -1973,37 +2073,38 @@ def plot_edist(edist, figsize=4, fig_name=None, savefig=False, showfig=True, sca
 
     hist, edges = np.histogram(s, bins=bins[2])  # calculate current histogram
     edges = edges[0:-1]  # remove the last bin edge to save equal number of points
-    hist_int = np.trapz(hist, edges) / speed_of_light / 1e6  # normalize
+    hist_int = np.trapz(hist, edges) / mult  # normalize
     hist = np.rint(hist.astype(float) / (hist_int / float(edist.charge())))
 
     ax_curr = fig.add_subplot(3, 1+plot_x_y + plot_xy_s, 1)
     #ax_curr.hist(s, bins,color='b')
-    ax_curr.plot(edges, hist, color='b')
+    ax_curr.plot(edges, hist/1000, color='b',linewidth=2)
     ax_curr.set_xlabel(s_label)
-    ax_curr.set_ylabel('I [A]')
+    ax_curr.set_ylabel('I [kA]')
     ax_curr.tick_params(axis='both',which='major', labelsize=12)#HMCC
     ax_curr.tick_params(axis='both',which='minor', labelsize=8)#HMCC
 
     ax_se = fig.add_subplot(3, 1+plot_x_y + plot_xy_s, 2 + plot_x_y + plot_xy_s, sharex=ax_curr)
     if e_units == 'ev':
         energy = edist.g * m_e_MeV
-        energy_av = int(mean(energy))
-
-        if scatter:
-            ax_se.scatter(s, energy - energy_av, marker='.')
-        else:
-            ax_se.hist2d(s, energy - energy_av, [bins[2], bins[3]], cmin=cmin, cmap=cmap)
-        ax_se.set_xlabel(s_label)
-        ax_se.set_ylabel('E + ' + str(energy_av) + ' [MeV]')
     else:  # elif beam_E_plot=='gamma':
-        if scatter:
-            ax_se.scatter(s, edist.g, marker='.')
-        else:
-            ax_se.hist2d(s, edist.g, [bins[2], bins[3]], cmin=cmin, cmap=cmap)
-        ax_se.set_xlabel(s_label)
-        ax_se.set_ylabel('$\gamma$')
+        energy = edist.g
+        
+    if e_offset == None:
+        e_offset = int(mean(energy))
+    if scatter:
+        ax_se.scatter(s, energy - e_offset, marker='.')
+    else:
+        ax_se.hist2d(s, energy - e_offset, [bins[2], bins[3]], cmin=cmin, cmap=cmap)
+
+    ax_se.set_xlabel(s_label)
+    if e_units == 'ev':
+        ax_se.set_ylabel('E + ' + str(e_offset) + ' [MeV]')
+    else:  # elif beam_E_plot=='gamma':
+        ax_se.set_ylabel('$\gamma$ + ' + str(e_offset))
     ax_se.tick_params(axis='both',which='major', labelsize=12)#HMCC
     ax_se.tick_params(axis='both',which='minor', labelsize=8)#HMCC
+
     if plot_xy_s:
         ax_xs = fig.add_subplot(3, 1+plot_x_y + plot_xy_s, 4 + plot_x_y, sharex=ax_curr)
         if scatter:
@@ -2024,7 +2125,6 @@ def plot_edist(edist, figsize=4, fig_name=None, savefig=False, showfig=True, sca
         ax_ys.set_ylabel('y [$\mu$m]')
         ax_ys.tick_params(axis='both',which='major', labelsize=12)#HMCC
         ax_ys.tick_params(axis='both',which='minor', labelsize=8)#HMCC
-
     if plot_x_y:
         ax_xy = fig.add_subplot(3, 1+plot_x_y + plot_xy_s, 2 + plot_xy_s)
         if scatter:
@@ -2034,9 +2134,7 @@ def plot_edist(edist, figsize=4, fig_name=None, savefig=False, showfig=True, sca
         ax_xy.set_xlabel('x [$\mu$m]')
         ax_xy.set_ylabel('y [$\mu$m]')
         ax_xy.tick_params(axis='both',which='major', labelsize=12)#HMCC
-        ax_xy.tick_params(axis='both',which='minor', labelsize=8)#HMCC 
-       
-
+        ax_xy.tick_params(axis='both',which='minor', labelsize=8)#HMCC
         ax_pxpy = fig.add_subplot(3, 1+plot_x_y + plot_xy_s, 4 + 2 * plot_xy_s)
         if scatter:
             ax_pxpy.scatter(edist.xp * 1e6, edist.yp * 1e6, marker='.')
@@ -2046,7 +2144,6 @@ def plot_edist(edist, figsize=4, fig_name=None, savefig=False, showfig=True, sca
         ax_pxpy.set_ylabel('py [$\mu$rad]')
         ax_pxpy.tick_params(axis='both',which='major', labelsize=12)#HMCC
         ax_pxpy.tick_params(axis='both',which='minor', labelsize=8)#HMCC
-    
 
     # if scatter:
     if flip_t:
@@ -2056,7 +2153,7 @@ def plot_edist(edist, figsize=4, fig_name=None, savefig=False, showfig=True, sca
         
     ax_curr.set_ylim(ymin=0)
 
-    ###HMCC #### 
+    ###HMCC ####
     ax_xps = fig.add_subplot(3, 1+plot_x_y + plot_xy_s, 8)
     if scatter:
         ax_xps.scatter(s, 1e6 * edist.xp, marker='.')
@@ -2066,7 +2163,6 @@ def plot_edist(edist, figsize=4, fig_name=None, savefig=False, showfig=True, sca
     ax_xps.set_ylabel('px [$\mu$rad]')
     ax_xps.tick_params(axis='both',which='major', labelsize=12)#HMCC
     ax_xps.tick_params(axis='both',which='minor', labelsize=8)#HMCC
-    
     ax_yps = fig.add_subplot(3, 1+plot_x_y + plot_xy_s, 9)
     if scatter:
         ax_yps.scatter(s, 1e6 * edist.yp, marker='.')
@@ -2083,11 +2179,10 @@ def plot_edist(edist, figsize=4, fig_name=None, savefig=False, showfig=True, sca
         ax_xpx.hist2d(edist.x * 1e6, edist.xp * 1e6, [bins[0], bins[1]], cmin=cmin, cmap=cmap)
     ax_xpx.set_xlabel('x [$\mu$m]')
     ax_xpx.set_ylabel('px [$\mu$rad]')
-    ax_xpx.set_xlim([0.9*1e6*np.amax(edist.x), 1.1*1e6*np.amin(edist.x)]) 
-    ax_xpx.set_ylim([0.9*1e6*np.amax(edist.xp), 1.1*1e6*np.amin(edist.xp)]) 
+    ax_xpx.set_xlim([0.9*1e6*np.amax(edist.x), 1.1*1e6*np.amin(edist.x)])
+    ax_xpx.set_ylim([0.9*1e6*np.amax(edist.xp), 1.1*1e6*np.amin(edist.xp)])
     ax_xpx.tick_params(axis='both',which='major', labelsize=12)#HMCC
     ax_xpx.tick_params(axis='both',which='minor', labelsize=8)#HMCC
-    
     ax_xpy = fig.add_subplot(3,1+plot_x_y + plot_xy_s, 7)
     if scatter:
         ax_xpy.scatter(edist.y * 1e6, edist.yp * 1e6, marker='.')
@@ -2095,8 +2190,8 @@ def plot_edist(edist, figsize=4, fig_name=None, savefig=False, showfig=True, sca
         ax_xpy.hist2d(edist.y * 1e6, edist.yp * 1e6, [bins[0], bins[1]], cmin=cmin, cmap=cmap)
     ax_xpy.set_xlabel('y [$\mu$m]')
     ax_xpy.set_ylabel('py [$\mu$m]')
-    ax_xpy.set_xlim([0.9*1e6*np.amax(edist.y), 1.1*1e6*np.amin(edist.y)]) 
-    ax_xpy.set_ylim([0.85*1e6*np.amax(edist.yp),1.1*1e6*np.amin(edist.yp)]) 
+    ax_xpy.set_xlim([0.9*1e6*np.amax(edist.y), 1.1*1e6*np.amin(edist.y)])
+    ax_xpy.set_ylim([0.85*1e6*np.amax(edist.yp),1.1*1e6*np.amin(edist.yp)])
     ax_xpy.tick_params(axis='both',which='major', labelsize=12)#HMCC
     ax_xpy.tick_params(axis='both',which='minor', labelsize=8)#HMCC
 
@@ -2121,7 +2216,7 @@ def plot_edist(edist, figsize=4, fig_name=None, savefig=False, showfig=True, sca
 
     if debug > 0:
         print(('      done in %.2f seconds' % (time.time() - start_time)))
-
+    return fig
 
 def plot_beam(beam, figsize=3, showfig=True, savefig=False, fig=None, plot_xy=None, debug=0):
 
@@ -2142,35 +2237,40 @@ def plot_beam(beam, figsize=3, showfig=True, savefig=False, fig=None, plot_xy=No
     if fig == None:
         fig = plt.figure()
     fig.clf()
+    
+    g0 = np.mean(beam.g0).astype(int) #mean
+    g0_dev = beam.g0 - g0 #deviation from mean
 
     fig.set_size_inches((4 * figsize, (3 + plot_xy) * figsize), forward=True)
     ax = fig.add_subplot(2 + plot_xy, 2, 1)
     plt.grid(True)
-    ax.set_xlabel(r'$\mu m$')
+    ax.set_xlabel(r'$s [\mu m]$',fontsize=fontsize)
     p1, = plt.plot(1.e6 * np.array(beam.z), beam.I, 'r', lw=3)
-    plt.plot(1.e6 * beam.z[beam.idx_max], beam.I[beam.idx_max], 'bs')
-    ax.set_ylim(ymin=0)
-    ax = ax.twinx()
     
-
-    p2, = plt.plot(1.e6 * np.array(beam.z), 1.e-3 * np.array(beam.eloss), 'g', lw=3)
-
-    ax.legend([p1, p2], [r'$I [A]$', r'Wake $[KV/m]$'], fontsize=fontsize, loc='best')
+    ax.set_ylim(ymin=0)
+    
+    if hasattr(beam,'eloss'):
+        ax = ax.twinx()
+        p2, = plt.plot(1.e6 * np.array(beam.z), 1.e-3 * np.array(beam.eloss), 'g', lw=3)
+        ax.legend([p1, p2], [r'$I [A]$', r'Wake $[KV/m]$'], fontsize=fontsize, loc='best')
+    else:
+        ax.legend([r'$I [A]$'], fontsize=fontsize, loc='best')
+    plt.plot(1.e6 * beam.z[beam.idx_max], beam.I[beam.idx_max], 'bs')
     # ax.set_xlim([np.amin(beam.z),np.amax(beam.x)])
     ax = fig.add_subplot(2 + plot_xy, 2, 2, sharex=ax)
     plt.grid(True)
-    ax.set_xlabel(r'$\mu m$')
+    ax.set_xlabel(r'$s [\mu m]$',fontsize=fontsize)
     #p1,= plt.plot(1.e6 * np.array(beam.z),1.e-3 * np.array(beam.eloss),'r',lw=3)
-    p1, = plt.plot(1.e6 * np.array(beam.z), beam.g0, 'r', lw=3)
-    plt.plot(1.e6 * beam.z[beam.idx_max], beam.g0[beam.idx_max], 'bs')
+    p1, = plt.plot(1.e6 * np.array(beam.z), g0_dev, 'r', lw=3)
+    plt.plot(1.e6 * beam.z[beam.idx_max], g0_dev[beam.idx_max], 'bs')
     ax = ax.twinx()
     p2, = plt.plot(1.e6 * np.array(beam.z), beam.dg, 'g', lw=3)
     plt.plot(1.e6 * beam.z[beam.idx_max], beam.dg[beam.idx_max], 'bs')
-    ax.legend([p1, p2], [r'$\gamma$', r'$\delta \gamma$'], loc='best')
+    ax.legend([p1, p2], [r'$\gamma$ + '+str(g0), r'$\delta \gamma$'], loc='best')
 
     ax = fig.add_subplot(2 + plot_xy, 2, 3, sharex=ax)
     plt.grid(True)
-    ax.set_xlabel(r'$\mu m$')
+    ax.set_xlabel(r'$s [\mu m]$',fontsize=fontsize)
     p1, = plt.plot(1.e6 * np.array(beam.z), beam.ex * 1e6, 'r', lw=3)
     p2, = plt.plot(1.e6 * np.array(beam.z), beam.ey * 1e6, 'g', lw=3)
     plt.plot(1.e6 * beam.z[beam.idx_max], beam.ex[beam.idx_max] * 1e6, 'bs')
@@ -2181,7 +2281,7 @@ def plot_beam(beam, figsize=3, showfig=True, savefig=False, fig=None, plot_xy=No
 
     ax = fig.add_subplot(2 + plot_xy, 2, 4, sharex=ax)
     plt.grid(True)
-    ax.set_xlabel(r'$\mu m$')
+    ax.set_xlabel(r'$s [\mu m]$',fontsize=fontsize)
     p1, = plt.plot(1.e6 * np.array(beam.z), beam.betax, 'r', lw=3)
     p2, = plt.plot(1.e6 * np.array(beam.z), beam.betay, 'g', lw=3)
     plt.plot(1.e6 * beam.z[beam.idx_max], beam.betax[beam.idx_max], 'bs')
@@ -2192,7 +2292,7 @@ def plot_beam(beam, figsize=3, showfig=True, savefig=False, fig=None, plot_xy=No
 
         ax = fig.add_subplot(3, 2, 5, sharex=ax)
         plt.grid(True)
-        ax.set_xlabel(r'$\mu m$')
+        ax.set_xlabel(r'$s [\mu m]$',fontsize=fontsize)
         p1, = plt.plot(1.e6 * np.array(beam.z), 1.e6 * np.array(beam.x), 'r', lw=3)
         p2, = plt.plot(1.e6 * np.array(beam.z), 1.e6 * np.array(beam.y), 'g', lw=3)
 
@@ -2207,7 +2307,7 @@ def plot_beam(beam, figsize=3, showfig=True, savefig=False, fig=None, plot_xy=No
 
         ax = fig.add_subplot(3, 2, 6, sharex=ax)
         plt.grid(True)
-        ax.set_xlabel(r'$\mu m$')
+        ax.set_xlabel(r'$s [\mu m]$',fontsize=fontsize)
         p1, = plt.plot(1.e6 * np.array(beam.z), 1.e6 * np.array(xp), 'r', lw=3)
         p2, = plt.plot(1.e6 * np.array(beam.z), 1.e6 * np.array(yp), 'g', lw=3)
 
@@ -2246,6 +2346,7 @@ def plot_wigner(wig_or_out, z=np.inf, p_units='um', s_units='nm', x_lim=(None,No
     
     if debug > 0:
         print('    plotting Wigner distribution')
+        
         
     if isinstance(wig_or_out, GenesisOutput):
         W=wigner_out(wig_or_out,z)
@@ -2847,14 +2948,17 @@ def gauss_fit(X, Y):
     return (Y1, RMS)
 
 
-def fwhm3(valuelist, height=0.5, peakpos=-1):
+def fwhm3(valuelist, height=0.5, peakpos=-1, total=1):
     """calculates the full width at half maximum (fwhm) of some curve.
-    the function will return the fwhm with sub-pixel interpolation. It will start at the maximum position and 'walk' left and right until it approaches the half values.
+    the function will return the fwhm with sub-pixel interpolation. 
+    It will start at the maximum position and 'walk' left and right until it approaches the half values.
+    if total==1, it will start at the edges and 'walk' towards peak until it approaches the half values.
     INPUT:
     - valuelist: e.g. the list containing the temporal shape of a pulse
     OPTIONAL INPUT:
     -peakpos: position of the peak to examine (list index)
     the global maximum will be used if omitted.
+    if total = 1 - 
     OUTPUT:
     -fwhm (value)
     """
@@ -2865,26 +2969,48 @@ def fwhm3(valuelist, height=0.5, peakpos=-1):
     peakvalue = valuelist[peakpos]
     phalf = peakvalue * height
 
-    # go left and right, starting from peakpos
-    ind1 = peakpos
-    ind2 = peakpos
-
-    while ind1 > 2 and valuelist[ind1] > phalf:
-        ind1 = ind1 - 1
-    while ind2 < len(valuelist) - 1 and valuelist[ind2] > phalf:
-        ind2 = ind2 + 1
-    # ind1 and 2 are now just below phalf
-    grad1 = valuelist[ind1 + 1] - valuelist[ind1]
-    grad2 = valuelist[ind2] - valuelist[ind2 - 1]
-    if grad1 == 0 or grad2 == 0:
-        width = None
+    if total == 0:
+        # go left and right, starting from peakpos
+        ind1 = peakpos
+        ind2 = peakpos
+        while ind1 > 2 and valuelist[ind1] > phalf:
+            ind1 = ind1 - 1
+        while ind2 < len(valuelist) - 1 and valuelist[ind2] > phalf:
+            ind2 = ind2 + 1
+        grad1 = valuelist[ind1 + 1] - valuelist[ind1]
+        grad2 = valuelist[ind2] - valuelist[ind2 - 1]
+        if grad1 == 0 or grad2 == 0:
+            width = None
+        else:
+            # calculate the linear interpolations
+            # print(ind1,ind2)
+            p1interp = ind1 + (phalf - valuelist[ind1]) / grad1
+            p2interp = ind2 + (phalf - valuelist[ind2]) / grad2
+            # calculate the width
+            width = p2interp - p1interp
     else:
-        # calculate the linear interpolations
+        ind1 = 1
+        ind2 = valuelist.size-2
+        # print(peakvalue,phalf)
+        # print(ind1,ind2,valuelist[ind1],valuelist[ind2])
+        while ind1 < peakpos and valuelist[ind1] < phalf:
+            ind1 = ind1 + 1
+        while ind2 > peakpos and valuelist[ind2] < phalf:
+            ind2 = ind2 - 1
         # print(ind1,ind2)
-        p1interp = ind1 + (phalf - valuelist[ind1]) / grad1
-        p2interp = ind2 + (phalf - valuelist[ind2]) / grad2
-        # calculate the width
-        width = p2interp - p1interp
+        # ind1 and 2 are now just above phalf
+        grad1 = valuelist[ind1] - valuelist[ind1 - 1]
+        grad2 = valuelist[ind2 + 1] - valuelist[ind2]
+        if grad1 == 0 or grad2 == 0:
+            width = None
+        else:
+            # calculate the linear interpolations
+            p1interp = ind1 + (phalf - valuelist[ind1]) / grad1
+            p2interp = ind2 + (phalf - valuelist[ind2]) / grad2
+            # calculate the width
+            width = p2interp - p1interp
+        # print(p1interp, p2interp)
+            
     return (peakpos, width, np.array([ind1, ind2]))
 
     # ax_size_l = ax_size_t.twinx() #longitudinal size

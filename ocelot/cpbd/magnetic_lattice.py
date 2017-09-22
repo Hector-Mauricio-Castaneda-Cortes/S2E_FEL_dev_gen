@@ -1,6 +1,7 @@
 from ocelot.cpbd.optics import MethodTM
 from ocelot.cpbd.elements import *
 from ocelot.common.logging import *
+import numpy as np
 from copy import deepcopy
 logger = Logger()
 
@@ -41,6 +42,77 @@ def lattice_format_converter(elements):
         s_pos = element[1] + element[0].l / 2.0
     return tuple(cell)
 
+
+def matrix2Matrix(elem, R):
+    """
+    Creation from R-matrix element Matrix
+    :param elem: Matrix element
+    :param R: R-matrix
+    :return: Matrix Element with defined r-elements
+    """
+    elem.rm11, elem.rm21, elem.rm31 = R[0, 0], R[1, 0], R[2, 0]
+    elem.rm12, elem.rm22, elem.rm32 = R[0, 1], R[1, 1], R[2, 1]
+    elem.rm13, elem.rm23, elem.rm33 = R[0, 2], R[1, 2], R[2, 2]
+    elem.rm14, elem.rm24, elem.rm34 = R[0, 3], R[1, 3], R[2, 3]
+    elem.rm15, elem.rm25, elem.rm35 = R[0, 4], R[1, 4], R[2, 4]
+    elem.rm16, elem.rm26, elem.rm36 = R[0, 5], R[1, 5], R[2, 5]
+    elem.rm41, elem.rm51, elem.rm61 = R[3, 0], R[4, 0], R[5, 0]
+    elem.rm42, elem.rm52, elem.rm62 = R[3, 1], R[4, 1], R[5, 1]
+    elem.rm43, elem.rm53, elem.rm63 = R[3, 2], R[4, 2], R[5, 2]
+    elem.rm44, elem.rm54, elem.rm64 = R[3, 3], R[4, 3], R[5, 3]
+    elem.rm45, elem.rm55, elem.rm65 = R[3, 4], R[4, 4], R[5, 4]
+    elem.rm46, elem.rm56, elem.rm66 = R[3, 5], R[4, 5], R[5, 5]
+
+
+def shrinker(lat, remaining_types, init_energy=0.):
+    """
+
+    :param lat: MagneticLattice
+    :param remaining_types: the type of the elements which needed to be untoched
+                            others will be "compress" to Matrix element
+                            e.g. [Monitor, Quadrupole, Bend, Hcor]
+    :param init_energy: initial energy
+    :return: New MagneticLattice
+    """
+    print("element numbers before: ", len(lat.sequence))
+    R_seq = []
+    new_elem = Matrix()
+    _r = np.eye(6)
+    _b = np.zeros(6)
+    length = 0.
+    count = 0
+    E = init_energy
+    for elem in lat.sequence:
+        if elem.__class__ in remaining_types:
+            if count != 0:
+                new_elem.l = length
+                matrix2Matrix(new_elem, _r)
+                R_seq.append(new_elem)
+                new_elem = Matrix()
+                length = 0.
+                _r = np.eye(6)
+                _b = np.zeros(6)
+
+                count = 0
+            elem.transfer_map._r = elem.transfer_map.R(E)
+            elem.transfer_map._b = elem.transfer_map.B(E)
+            R_seq.append(elem)
+        elif elem.__class__ == Edge and ((Bend in remaining_types) or (SBend in remaining_types) or (RBend in remaining_types)):
+            continue
+        else:
+            _r = np.dot(elem.transfer_map.R(E), _r)
+            _b =  np.dot(elem.transfer_map.R(E), _b) + elem.transfer_map.B(E)  #+dB #check
+            length = elem.l + length
+            new_elem.delta_e = elem.transfer_map.delta_e + new_elem.delta_e
+            count += 1
+        E += elem.transfer_map.delta_e
+    if count != 0:
+        matrix2Matrix(new_elem, _r)
+        new_elem.l = length
+        R_seq.append(new_elem)
+    new_lat = MagneticLattice(R_seq)
+    print("element numbers after: ", len(new_lat.sequence))
+    return new_lat
 
 
 flatten = lambda *n: (e for a in n
@@ -130,10 +202,38 @@ class MagneticLattice:
                 n += 2
             n += 1
 
+    def update_edge_e1(self, edge, bend):
+        edge.l = 0.
+        edge.angle = bend.angle
+        edge.k1 = bend.k1
+        edge.edge = bend.e1
+        edge.tilt = bend.tilt
+        edge.dtilt = bend.dtilt
+        edge.dx = bend.dx
+        edge.dy = bend.dy
+        edge.h_pole = bend.h_pole1
+        edge.gap = bend.gap
+        edge.fint = bend.fintx
+        edge.pos = 1
+
+    def update_edge_e2(self, edge, bend):
+        edge.l = 0.
+        edge.angle = bend.angle
+        edge.k1 = bend.k1
+        edge.edge = bend.e2
+        edge.tilt = bend.tilt
+        edge.dtilt = bend.dtilt
+        edge.dx = bend.dx
+        edge.dy = bend.dy
+        edge.h_pole = bend.h_pole2
+        edge.gap = bend.gap
+        edge.fint = bend.fintx
+        edge.pos = 2
+
     def update_transfer_maps(self):
         #E = self.energy
         self.totalLen = 0
-        for element in self.sequence:
+        for i, element in enumerate(self.sequence):
             if element.__class__ == Undulator:
                 if element.field_file != None:
                     element.l = element.field_map.l * element.field_map.field_file_rep
@@ -141,9 +241,24 @@ class MagneticLattice:
                         element.l = element.l*0.001
             self.totalLen += element.l
             #print(element.k1)
+            if element.__class__ == Edge:
+
+                if "_e1" in element.id:
+                    bend = self.sequence[i+1]
+                    if bend.__class__ not in (SBend, RBend, Bend):
+                        bend = self.sequence[i - 1]
+                        print("Backtracking?")
+                    self.update_edge_e1(element, bend)
+                elif "_e2" in element.id:
+                    bend = self.sequence[i-1]
+                    if bend.__class__ not in (SBend, RBend, Bend):
+                        bend = self.sequence[i + 1]
+                    self.update_edge_e2(element, bend)
+                else:
+                    print("EDGE is not updated. Use standard function to create and update MagneticLattice")
             element.transfer_map = self.method.create_tm(element)
             logger.debug("update: " + element.transfer_map.__class__.__name__)
-            #print("update: ", element.transfer_map.__class__.__name__)
+            #print("update: ", element.transfer_map.__class__.__name__, element.l, element.id, element.transfer_map.R(0))
             if 'pulse' in element.__dict__: element.transfer_map.pulse = element.pulse
         return self
 

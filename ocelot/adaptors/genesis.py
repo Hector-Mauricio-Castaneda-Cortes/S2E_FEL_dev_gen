@@ -414,9 +414,10 @@ class GenesisInput:
         self.dpa = None # GenesisParticlesDump()
         self.rad = None # GenesisRad()
 
-        self.run_dir = None # directory to run simulation in
-        self.exp_dir = None # if run_dir==None, it is created based on exp_dir
-        self.betamatch =False #HMCC betamatch flag
+        self.run_dir = None  # directory to run simulation in
+        self.exp_dir = None  # if run_dir==None, it is created based on exp_dir
+        self.betamatch = False  # HMCC betamatch flag
+
         self.inp_txt = inputTemplate
 
     def input(self):
@@ -470,15 +471,14 @@ class GenesisInput:
         # if self.trama == 1:
             # inp_txt = inp_txt.replace("__TRAMA__\n", "")
         # else:
-            # input = input.replace("__TRAMA__\n", "")
-    
-        if (self.betamatch == True):#HMCC
-            inp_txt.replace("__TRAMA__\n","")#HMCC
-            for i_tr in self.__dict__.keys():#HMCC
-                if i_tr.startswith('itram'):#HMCC
-                    inp_txt = inp_txt.replace("__" + str(i_tr).upper() + "__","")#HMCC 
-        
             # inp_txt = inp_txt.replace("__TRAMA__\n", "")
+        if (self.betamatch == True):  # HMCC
+            inp_txt.replace("__TRAMA__\n", "")  # HMCC
+            for i_tr in self.__dict__.keys():  # HMCC
+                if i_tr.startswith('itram'):  # HMCC
+                    inp_txt = inp_txt.replace("__" + str(i_tr).upper() + "__", "")  # HMCC
+
+                    # inp_txt = inp_txt.replace("__TRAMA__\n", "")
 
         for p in self.__dict__.keys():
             inp_txt = inp_txt.replace("__" + str(p).upper() + "__", str(self.__dict__[p]).replace('[', '').replace(']', '').replace(',', ''))
@@ -669,13 +669,13 @@ def parray2edist(p_array):
     e0 = p_array.E * 1e9 #[eV]
     p0 = sqrt( (e0**2 - m_e_eV**2) / speed_of_light**2 )
     
-    p_oc = p_array.particles[5::6] # deltaE / average_impulse / speed_of_light
+    p_oc = p_array.rparticles[5] # deltaE / average_impulse / speed_of_light
     edist.g = (p_oc * p0 * speed_of_light + e0) / m_e_eV
-    edist.x = p_array.particles[::6]  # position in x in meters
-    edist.y = p_array.particles[2::6]  # position in y in meters
-    edist.xp = p_array.particles[1::6]  # divergence in x
-    edist.yp = p_array.particles[3::6]  # divergence in y
-    edist.t = p_array.particles[4::6] / speed_of_light  # longitudinal position in seconds
+    edist.x = p_array.rparticles[0]  # position in x in meters
+    edist.y = p_array.rparticles[2]  # position in y in meters
+    edist.xp = p_array.rparticles[1]  # divergence in x
+    edist.yp = p_array.rparticles[3]  # divergence in y
+    edist.t = p_array.rparticles[4] / speed_of_light  # longitudinal position in seconds
 
     edist.part_charge = p_array.q_array[0] #fix for general case  # charge per particle
     edist.filePath = ''
@@ -685,7 +685,7 @@ def parray2edist(p_array):
 def edist2parray(edist):
 
     p_array = ParticleArray()
-    p_array.particles = np.zeros(edist.len() * 6)
+    p_array.rparticles = np.zeros((6,edist.len()))
     p_array.q_array = np.ones(edist.len()) * edist.part_charge
     
     g0 = np.mean(edist.g) # average gamma
@@ -694,12 +694,12 @@ def edist2parray(edist):
 #    p0 = sqrt( (e0**2 - m_e_eV**2) / speed_of_light**2 ) # average impulse
     p_array.E = g0 * m_e_GeV # average energy in GeV
     
-    p_array.particles[::6] = edist.x # position in x in meters
-    p_array.particles[1::6] = edist.xp  # divergence in x
-    p_array.particles[2::6] = edist.y # position in x in meters
-    p_array.particles[3::6] = edist.yp  # divergence in x
-    p_array.particles[4::6] = edist.t * speed_of_light
-    p_array.particles[5::6] = (edist.g - g0) * m_e_eV / p0 / speed_of_light
+    p_array.rparticles[0] = edist.x # position in x in meters
+    p_array.rparticles[1] = edist.xp  # divergence in x
+    p_array.rparticles[2] = edist.y # position in x in meters
+    p_array.rparticles[3] = edist.yp  # divergence in x
+    p_array.rparticles[4] = edist.t * speed_of_light
+    p_array.rparticles[5] = (edist.g - g0) * m_e_eV / p0 / speed_of_light
     
     return p_array
     
@@ -1004,6 +1004,7 @@ def run_genesis(inp, launcher, read_level=2, assembly_ver='pyt', debug=1):
 
     inp_file = filename_from_path(inp_path)
     out_file = filename_from_path(out_path)
+
     # cleaning directory
     if debug > 0:
         print ('    removing old files')
@@ -1011,6 +1012,7 @@ def run_genesis(inp, launcher, read_level=2, assembly_ver='pyt', debug=1):
     # os.system('rm -rf ' + out_path+'*') # to make sure out files are cleaned
     # os.system('rm -rf ' + inp_path+'*') # to make sure inp files are cleaned
     os.system('rm -rf ' + inp.run_dir + 'tmp.cmd')
+
     # create and fill necessary input files
     if inp.latticefile == None:
         if inp.lat != None:
@@ -1254,6 +1256,9 @@ def assemble(fileName, remove=1, overwrite=0, ram=1, debug=1):
             # os.remove(fins)
     else:
         for i, n in enumerate(fins):
+            if debug > 1:
+                tot = size(fins)
+                print(i, 'of', tot)
             # if i/N>=index:
                 # sys.stdout.write(str(index)+'%.')
                 # index +=10
@@ -1326,6 +1331,7 @@ def generate_input(up, beam, itdp=False):
     #inp.nsec = 20
 
     inp.xlamd = up.lw
+    #inp.aw0 = up.K * np.sqrt(0.5)
     inp.aw0 = up.K #HMCC
     inp.awd = inp.aw0
     inp.delgam = beam.sigma_E / m_e_GeV
@@ -1403,7 +1409,7 @@ def get_genesis_launcher(launcher_program=None):
             launcher.program = '/home/iagapov/workspace/xcode/codes/genesis/genesis < tmp.cmd | tee log'
         if host.startswith('max'):
             launcher.program = '/data/netapp/xfel/products/genesis/genesis < tmp.cmd | tee log'
-        
+
         launcher.mpiParameters = '-x PATH -x MPI_PYTHON_SITEARCH -x PYTHONPATH'  # added -n
     #launcher.nproc = nproc
     return launcher
@@ -1618,11 +1624,16 @@ def read_out_file(filePath, read_level=2, precision=float, debug=1):
         out.beam_charge = np.sum(out.I * out.dt)
         out.sn_Imax = np.argmax(out.I)  # slice number with maximum current
         if read_level == 2:
+            
             if debug > 0:
                 print ('      calculating spectrum')
-            out.spec = abs(np.fft.fft(np.sqrt(np.array(out.power)) * np.exp(1.j * np.array(out.phi_mid)), axis=0))**2 / sqrt(out.nSlices) / (2 * out.leng / out('ncar'))**2 / 1e10
+            # p_mid_n = out.p_mid / (2 * out.leng / out('ncar')) #normalized on-axis power per pixel area
+            # out.spec = abs(np.fft.fft(np.sqrt(np.array(out.p_mid)) * np.exp(1.j * np.array(out.phi_mid)), axis=0))**2 / (2 * out.leng / out('ncar'))**2 / 1e10 /np.sum(out.p_mid * out.dt, axis=0)#/ sqrt(out.nSlices)
+            p_mid_n = out.p_mid / (2 * out.leng / out('ncar'))**2
+            out.spec = abs(np.fft.fft(np.sqrt(np.array(p_mid_n)) * np.exp(1.j * np.array(out.phi_mid)), axis=0))**2 * out.dt**2 * 1e10 #arb.units, normalized to mesh pixel, temporal slice size and slice number.
             if debug > 1:
                 print ('        done')
+            
             e_0 = h_eV_s * speed_of_light / out('xlamds')
             out.freq_ev = h_eV_s * np.fft.fftfreq(len(out.spec), d=out('zsep') * out('xlamds') * out('ishsty') / speed_of_light) + e_0  # d=out.dt
 
@@ -1661,6 +1672,8 @@ def read_out_file(filePath, read_level=2, precision=float, debug=1):
                     weight = np.ones_like(out.power)
                 out.rad_t_size_weighted = np.average(out.r_size * 1e6, weights=weight, axis=0)
                 out.sliceKeys_used.append('rad_t_size_weighted')
+    else:
+        out.s = [0]
 
     if out('iscan') != 0:
         out.scv = out.I  # scan value
@@ -2332,12 +2345,27 @@ def cut_edist(edist,
     return edist_f
 
 
+def set_edist_energy(edist,E_GeV):
+
+    if not isinstance(edist, GenesisElectronDist):
+        raise ValueError('out is neither GenesisOutput() nor a valid path')
+    
+    edist_out = deepcopy(edist)
+    edist_out.g -= np.mean(edist_out.g)
+    edist_out.g += E_GeV * 1e9 / m_e_eV
+    
+    return edist_out
+    
+    
+    
 def repeat_edist(edist, factor, smear=1):
     '''
     dublicates the GenesisElectronDist() by given factor
     smear - smear new particles by 1e-3 of standard deviation of parameter
     '''
-
+    if not isinstance(edist, GenesisElectronDist):
+        raise ValueError('out is neither GenesisOutput() nor a valid path')
+        
     edist_out = GenesisElectronDist()
     edist_out.filePath = edist.filePath
 
@@ -3057,7 +3085,7 @@ def generate_lattice(lattice, unit=1.0, energy=None, debug=False, min_phsh = Fal
     prevLen = 0
     prevPosQ = 0
     prevLenQ = 0
-    
+
     pos = 0
     sum_prev = 0 #HMCC
 
@@ -3065,20 +3093,20 @@ def generate_lattice(lattice, unit=1.0, energy=None, debug=False, min_phsh = Fal
     quads = []
     
     gamma = energy / m_e_GeV
-    
+
     for el in lattice.sequence:#HMCC Summing over the elements of the lattice before the 1st undulator (f1st)
-        if el.__class__ !=Undulator:#HMCC  
+        if el.__class__ !=Undulator:#HMCC
             sum_prev = sum_prev+el.l#HMCC
         else:# HMCC
             break #HMCC
-    
+
     for e in lattice.sequence:
 
         l = float(e.l)
 
         # print e.type, pos, prevPos
         if e.__class__ == Undulator:
-                
+
             l = float(e.nperiods) * float(e.lperiod)
 
             undLat += 'AW' + '    ' + str(e.Kx * np.sqrt(0.5)) + '   ' + str(round(l / unit, 2)) + '  ' + str(round((pos - prevPos - prevLen) / unit, 2)) + '\n'
@@ -3105,8 +3133,8 @@ def generate_lattice(lattice, unit=1.0, energy=None, debug=False, min_phsh = Fal
             else:#HMCC in case the first element is not an undulator.
                 K_rms = e.Kx * np.sqrt(0.5) #HMCC
                 driftLat += 'AD' + '    ' + str(K_rms) + '   ' + str(round((2*sum_prev) / unit, 2)) + '  ' + str(round((l+sum_prev) / unit, 2)) + '\n'#HMCC
-                
-            
+
+
             prevPos = pos
             prevLen = l
 
@@ -3486,9 +3514,9 @@ def astra2edist(adist, center=1):
     edist = GenesisElectronDist()
     edist.x = adist[:, 0]
     edist.y = adist[:, 1]
-    #edist.t = -(adist[:, 2] - np.mean(adist[:, 2])) / speed_of_light  # long position normalized to 0 and converted to time #HMCC add -
-    edist.t = -adist[:,2]/speed_of_light #HMCC
-    edist.t= edist.t-np.amin(edist.t)
+    # edist.t = -(adist[:, 2] - np.mean(adist[:, 2])) / speed_of_light  # long position normalized to 0 and converted to time #HMCC add -
+    edist.t = -adist[:, 2] / speed_of_light  # HMCC
+    edist.t = edist.t - np.amin(edist.t)
     edist.xp = adist[:, 3] / adist[:, 5]  # angle of particles in x
     edist.yp = adist[:, 4] / adist[:, 5]  # angle of particles in y
     p_tot = sqrt(adist[:, 3]**2 + adist[:, 4]**2 + adist[:, 5]**2)

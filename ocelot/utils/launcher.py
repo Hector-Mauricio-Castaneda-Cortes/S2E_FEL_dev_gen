@@ -5,7 +5,7 @@ Launches simulations on various remote configurations
 import os
 import time
 import subprocess
-from ocelot.adaptors.genesis import *
+from ocelot.adaptors.genesis import * 
 
 def createId(prefix):
     t = time.localtime()
@@ -104,7 +104,7 @@ class MpiLauncher(Launcher):
         self.host = 'localhost'
         self.program = ""
         self.nproc = 0
-        self.mpiParameters = "" 
+        self.mpiParameters = ""
         
     def prepare(self):
         return False
@@ -112,11 +112,11 @@ class MpiLauncher(Launcher):
     def launch(self):
         t1 = time.time()
         print ('launching mpi job')
-        ##THIS LINE AND THE NEXT CHANGED BY GG ## command = 'mkdir -p '+ self.dir + '; ' + 'cd '+ self.dir + '; '+ "mpirun " + str(self.mpiParameters) + " -n " + str(self.nproc) + " " + self.program 
+        ##THIS LINE AND THE NEXT CHANGED BY GG ## command = 'mkdir -p '+ self.dir + '; ' + 'cd '+ self.dir + '; '+ "mpirun " + str(self.mpiParameters) + " -n " + str(self.nproc) + " " + self.program
         ########## #HMCC ########################      
         command = 'mkdir -p '+ self.dir + '; ' + 'cd '+ self.dir + '; '+self.program
         ####################
-        #command = 'mkdir -p '+ self.dir + '; ' + 'cd '+ self.dir + '; '+ "`which mpirun` " + str(self.mpiParameters) + " " + self.program#HMCC comment
+        #command = 'mkdir -p '+ self.dir + '; ' + 'cd '+ self.dir + '; '+ "`which mpirun` " + str(self.mpiParameters) + " " + self.program
         print (command)
         os.system(command)
         t2 = time.time()
