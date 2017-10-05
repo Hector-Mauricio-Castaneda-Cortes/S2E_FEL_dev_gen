@@ -7,6 +7,7 @@ from ocelot.optimizer.UIOcelotInterface_gen import *
 import json
 import scipy
 from PyQt5.QtGui import QPixmap, QImage
+from PyQt5.QtWidgets import QWidget
 from PIL import Image
 import subprocess
 import base64
@@ -99,6 +100,11 @@ class MainWindow(Ui_Form):
         self.read_alarm = QtCore.QTimer()
         self.read_alarm.timeout.connect(self.alarm_value)
         self.read_alarm.start(1000)
+        path2preset= self.Form.config_dir + "standard/"
+        self.pb_sase1_1.clicked.connect(lambda: self.load_settings(filename=path2preset + "sase1_1.json"))
+        self.pb_sase1_2.clicked.connect(lambda: self.load_settings(filename=path2preset + "sase1_2.json"))
+        self.pb_disp_1.clicked.connect(lambda: self.load_settings(filename=path2preset + "disp_1.json"))
+        self.pb_disp_2.clicked.connect(lambda: self.load_settings(filename=path2preset + "disp_2.json"))
         # self.horizontalLayout_2.setStyleSheet("color: red")
 
         # font = self.pb_hyper_file.font()
@@ -295,13 +301,12 @@ class MainWindow(Ui_Form):
         filename = QtGui.QFileDialog.getOpenFileName(self.Form, 'Load State',
         self.Form.config_dir, "txt (*.json)", None, QtGui.QFileDialog.DontUseNativeDialog)[0]
         if filename:
-            #print(filename)
-            (body_name, extension) = filename.split("/")[-1].split(".")
-            #print(self.Form.obj_save_path + body_name + ".py", self.Form.obj_func_path )
-            copy(self.Form.obj_save_path + body_name + ".py", self.Form.obj_func_path )
-            #self.Form.set_file = filename
-            self.restore_state(filename)
+            self.load_settings(filename)
 
+    def load_settings(self, filename):
+        (body_name, extension) = filename.split("/")[-1].split(".")
+        copy(self.Form.obj_save_path + body_name + ".py", self.Form.obj_func_path)
+        self.restore_state(filename)
 
     def get_hyper_file(self):
         #filename = QtGui.QFileDialog.getOpenFileName(self.Form, 'Load Hyper Parameters', filter="txt (*.npy *.)")
@@ -333,13 +338,13 @@ class MainWindow(Ui_Form):
 
         if not self.cb_use_predef.checkState():
             text += "obj func: A   : " + str(self.le_a.text()).split("/")[-2]  + "/"+ str(self.le_a.text()).split("/")[-1] + "\n"
-            if str(self.le_b.text()) != "":
+            if str(self.le_b.text()) != "" and self.is_le_addr_ok(self.le_b):
                 text += "obj func: B   : " + str(self.le_b.text()).split("/")[-2] + "/" + str(self.le_b.text()).split("/")[-1] + "\n"
-            if str(self.le_c.text()) != "":
+            if str(self.le_c.text()) != "" and self.is_le_addr_ok(self.le_c):
                 text += "obj func: C   : " + str(self.le_c.text()).split("/")[-2] + "/" + str(self.le_c.text()).split("/")[-1] + "\n"
-            if str(self.le_d.text()) != "":
+            if str(self.le_d.text()) != "" and self.is_le_addr_ok(self.le_d):
                 text += "obj func: D   : " + str(self.le_d.text()).split("/")[-2] + "/" + str(self.le_d.text()).split("/")[-1] + "\n"
-            if str(self.le_e.text()) != "":
+            if str(self.le_e.text()) != "" and self.is_le_addr_ok(self.le_e):
                 text += "obj func: E   : " + str(self.le_e.text()).split("/")[-2] + "/" + str(self.le_e.text()).split("/")[-1] + "\n"
             text += "obj func: expr: " + str(self.le_obf.text()) + "\n"
         else:
@@ -374,7 +379,7 @@ class MainWindow(Ui_Form):
         """
 
         s = str(filename) + "." + str(filetype)
-        p = QPixmap.grabWindow(self.Form.winId())
+        p = QWidget.grab(self.Form)
         p.save(s, 'png')
         # im = Image.open(s)
         # im.save(s[:-4]+".ps")
