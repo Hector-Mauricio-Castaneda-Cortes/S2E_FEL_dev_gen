@@ -20,6 +20,7 @@ from ocelot.common.globals import *  # import of constants like "h_eV_s" and "sp
 import math
 import numpy as np
 from numpy import mean, std, inf, shape, append, complex128, complex64
+from copy import deepcopy #HMCC
 
 inputTemplate = "\
  $newrun \n\
@@ -651,13 +652,13 @@ class GenesisElectronDist:
         mean_ypy = mean(y * yp)
         mean_g = mean(self.g)
 
-        tws.emit_x = mean_g * (mean_x2 * mean_px2 - mean_xpx**2)**0.5 / mean_g
-        tws.emit_y = mean_g * (mean_y2 * mean_py2 - mean_ypy**2)**0.5 / mean_g
+        tws.emit_x = mean_g*(mean_x2 * mean_px2 - mean_xpx**2)**0.5/mean_g
+        tws.emit_y = mean_g*(mean_y2 * mean_py2 - mean_ypy**2)**0.5/mean_g
         tws.beta_x = mean_g * mean_x2 / tws.emit_x
         tws.beta_y = mean_g * mean_y2 / tws.emit_y
         tws.alpha_x = -mean_g * mean_xpx / tws.emit_x
         tws.alpha_y = -mean_g * mean_ypy / tws.emit_y
-        tws.E = mean_g * m_e_GeV
+        tws.E = mean_g * m_e_MeV#HMCC m_e_MeV instead of m_e_GeV
 
         return tws
 
@@ -2135,7 +2136,7 @@ def dpa2edist(out, dpa, num_part=1e5, smear=1, debug=1):
     if debug > 0:
         print ('    transforming particle to distribution file')
 
-    assert out('itdp') == True, '! steadystate Genesis simulation, dpa2dist() not implemented yet!'
+    assert out('itdp') == 1.0, '! steadystate Genesis simulation, dpa2dist() not implemented yet!'#HMCC
 
     npart = int(out('npart'))
     # nslice=int(out('nslice'))
@@ -2390,6 +2391,16 @@ def repeat_edist(edist, factor, smear=1):
 
     return edist_out
 
+#HMCC#
+def disperse_edist(edist,R56,debug=1):
+    if debug >0:
+        print(' introducing dispersion to particle distribution file with R56',R56,'m')
+    if not isinstance(edist,GenesisElectronDist):
+        raise ValueError('out is neither GenesisOutput() nor a valid path')
+    edist_out = deepcopy(edist)
+    edist_out.t+=R56*(edist_out.g-np.mean(edist_out.g))/edist_out.g/speed_of_light
+    return edist_out
+#HMCC
 
 def write_edist_file(edist, filePath=None, debug=1):
     '''
