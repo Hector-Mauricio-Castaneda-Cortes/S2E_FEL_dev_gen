@@ -532,12 +532,13 @@ class FEL_simulation_block(object):
         plt.rcParams['text.latex.unicode']=False
         #Plot distribution
         if getattr(inp,'edist')!=None:
-            plot_edist(getattr(inp,'edist'),figsize=12,savefig=True,showfig=False) 
-            bfd_b = edist2beam(getattr(inp,'edist'),step=float(10.0*getattr(inp,'xlamds')))
+            plot_edist(getattr(inp,'edist'),figsize=20,savefig=True,showfig=False,plot_x_y=True,plot_xy_s=False) 
+            plot_edist(getattr(inp,'edist'),figsize=20,savefig=True,showfig=False,plot_x_y=False,plot_xy_s=True) 
+            bfd_b = edist2beam(getattr(inp,'edist'),step=float(80.0*getattr(inp,'xlamds')))
             setattr(bfd_b,'filePath',self.file_pout+'slice_edist')
             plot_beam(bfd_b,savefig=True,showfig=False)
         elif getattr(inp,'beam')!=None and hasattr(inp.edist,'I') and hasattr(inp.beam,'eloss'):
-            plot_beam(getattr(inp,'beam'),figsize=10,savefig=True,showfig=False)
+            plot_beam(getattr(inp,'beam'),figsize=20,savefig=True,showfig=False)
         # Power , electron and radiation plots
 
         if getattr(self,'i_scan')==0:
