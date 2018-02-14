@@ -5,8 +5,9 @@ HMCC: 25-05-17 Reimplementation of the FEL simulation block (creation of class w
 HMCC: 04-07-17 Fixing bugs of time window (reading nslice from input file)
 HMCC: 12-07-17: Fixing bugs reading from input file, adding support to read beam file and fixing bugs 
                of reading existent beam file.
-HMCC: 21-07-17: Gixing bug related to centering when an ASTRA file is read. Fixing quad scan bug. Add slice plot when
+HMCC: 21-07-17: Fixing bug related to centering when an ASTRA file is read. Fixing quad scan bug. Add slice plot when
                 a distribution is given (via ASTRA or existent dist file)
+HMCC: 29-01-17: Fixing bugs in the reading routine in order to run the S2E for the afterburner scheme
 '''
 #################################################
 ### import of all modules that are required.
@@ -25,6 +26,7 @@ import ocelot.cpbd.elements
 import numpy as np
 import matplotlib.pyplot as plt
 import os,sys, errno
+import time
     
 
 class FEL_simulation_block(object):
@@ -97,11 +99,15 @@ class FEL_simulation_block(object):
                         continue
                     elif(splitLine[0].startswith('$end')):
                         break
-                    elif (str(splitLine[0]).startswith('i') or str(splitLine[0]).startswith('n') 
+                    elif ((str(splitLine[0]).startswith('i') and not str(splitLine[0])=='ibfield' and not str(splitLine[0])=='imagl') or str(splitLine[0])=='itdp' or str(splitLine[0]).startswith('n') 
                           or str(splitLine[0]).startswith('lbc') or str(splitLine[0]).startswith('magin') or str(splitLine[0]).startswith('magout')   
-                          or str(splitLine[0]).startswith('ffspec') or str(splitLine[0]).startswith('convharm') 
-                          or str(splitLine[0]).startswith('multconv')):
+                          or str(splitLine[0]).startswith('ffspec') or str(splitLine[0]).startswith('convharm') or str(splitLine[0]).startswith('ippart')
+                          or str(splitLine[0]).startswith('ispart') or str(splitLine[0]).startswith('ipradi') or str(splitLine[0]).startswith('isradi')
+                          or str(splitLine[0])=='alignradf'
+                          or str(splitLine[0]).startswith('multconv') or str(splitLine[0])=='offsetradf'):
                         val_attr = int(float(splitLine[-1].replace('=',"")))
+                    elif (str(splitLine[0]).startswith('ibfield')) or (str(splitLine[0]).startswith('imagl')) :
+                        val_attr = float(splitLine[-1].replace('=',""))
                     elif (str(splitLine[0])=='xkx') or (str(splitLine[0])=='xky'):
                         val_attr = float(splitLine[-1].replace('=',""))
                     elif (str(splitLine[0])=='f1st'):
@@ -110,12 +116,14 @@ class FEL_simulation_block(object):
                         continue
                     elif (splitLine[0].startswith('wcoefz')):
                         val_attr = [float(splitLine[-1][2:].rsplit(' ')[i]) for i in range(0,7,3)] 
-                    elif (splitLine[0].startswith('lout')):                
+                    elif (splitLine[0].startswith('lout')):  
                         val_attr = [int(float(l_out)) for l_out in splitLine[-1][1:].rsplit(' ')]
                     elif(splitLine[0].startswith('alpha')):
                         val_attr = float(splitLine[-1].replace('=',""))
                     elif((splitLine[0].startswith('magin')) and (splitLine[0].endswith('file'))):
                         val_attr = str(splitLine[-1].replace('=',""))
+                    elif (splitLine[0].startswith('partfile')) or ((splitLine[0].startswith('fieldfile'))):
+                        continue
                     else:
                         val_attr = float(splitLine[-1].replace('=',""))        
                     setattr(A_input,str(splitLine[0]),val_attr)                
@@ -139,7 +147,8 @@ class FEL_simulation_block(object):
         drl = getattr(A_contents,'drl')
         quadf = getattr(A_contents,'quadf')
         quadd = -getattr(A_contents,'quadd')
-        nsec = getattr(A_contents,'nsec')        
+        nsec = getattr(A_contents,'nsec') 
+        f1st = getattr(A_contents,'f1st')
         E_beam = gamma0*m_e_GeV
         E_photon=h_eV_s*speed_of_light/xlamds
         p_beam = np.sqrt(E_beam**2-m_e_GeV**2)
@@ -169,7 +178,12 @@ class FEL_simulation_block(object):
         extra_fodo = (und,d_rift,qdh)
         cell_ps = (und,d_rift, qd, d_rift2,und, d_rift,qf,d_rift2)
         l_fodo = MagneticLattice(cell_ps).totalLen/2 ##Length of fodo cell
-        sase3= MagneticLattice((qdh,d_rift,)+(np.ceil(nsec/2)*cell_ps)) # Lattice with nsec modules
+        if f1st ==1:
+            sase3= MagneticLattice((qdh,d_rift,)+(np.ceil(nsec/2)*cell_ps)) # Lattice with nsec modules
+        elif f1st ==0 and nsec >1:
+            sase3=  MagneticLattice(np.ceil(nsec/2)*cell_ps) # Lattice with nsec modules
+        elif f1st ==0 and nsec ==1:
+            sase3=  MagneticLattice(cell_ps) # Lattice with nsec modules
         up = UndulatorParameters(und,E_beam) # Instance of the Class UndulatorParameters
         print('++++ Undulator Parameters +++')
         up.printParameters()
@@ -277,7 +291,7 @@ class FEL_simulation_block(object):
             setattr(inp,'rad',bfd)
             return inp
         elif flag_bd == 'dpa':
-            bfd = read_dpa_file(getattr(self,'file_dpa'))
+            bfd = read_dpa_file(getattr(self,'file_dpa'),nbins = getattr(inp,'nbins'),npart = getattr(inp,'npart'))
             setattr(inp,'dpa',bfd)
             return inp 
         elif flag_bd == 'dfl':
@@ -371,7 +385,7 @@ class FEL_simulation_block(object):
         else:
             run_range=run_inp
         if itdp ==True:
-            param_inp = ['energy','spec','bunching','el_energy','el_e_spread','xrms','yrms']
+            param_inp = ['energy','spec','bunching','el_energy','el_e_spread','xrms','yrms','p_int','dfl_spec','p_mid']
             s_inp=['max','mean']
             z_inp=[0,'end'] 
             n_seeds = len([self.file_pout+'scan_'+str(run_range[0])+'/'+files for files in os.listdir(self.file_pout+'scan_'+str(run_range[0])) if files.startswith('ip_s')])
@@ -461,7 +475,9 @@ class FEL_simulation_block(object):
                             elif s_ind=='max_cur':
                                 s_value=param_matrix[outlist[irun][i_seed].sn_Imax,:]
                             elif s_ind=='mean':
-                                s_value=np.mean(param_matrix,axis=0)
+                                 s_value=np.average(param_matrix,axis=0,weights=outlist[irun][i_seed].I)#HMCC doing average current
+                            #elif s_ind=='mean':#HMCC comment
+                            #    s_value=np.mean(param_matrix,axis=0) #HMCC comment
                             else:
                                 si=np.where(outlist[irun][i_seed].s<=s_ind)[-1][-1]
                                 s_value=param_matrix[si,:]
@@ -533,7 +549,7 @@ class FEL_simulation_block(object):
         #Plot distribution
         if getattr(inp,'edist')!=None:
             plot_edist(getattr(inp,'edist'),figsize=20,savefig=True,showfig=False,plot_x_y=True,plot_xy_s=False) 
-            plot_edist(getattr(inp,'edist'),figsize=20,savefig=True,showfig=False,plot_x_y=False,plot_xy_s=True) 
+            plot_edist(getattr(inp,'edist'),figsize=20,savefig=True,showfig=False,plot_x_y=False,plot_xy_s=True)
             bfd_b = edist2beam(getattr(inp,'edist'),step=float(80.0*getattr(inp,'xlamds')))
             setattr(bfd_b,'filePath',self.file_pout+'slice_edist')
             plot_beam(bfd_b,savefig=True,showfig=False)
@@ -543,7 +559,7 @@ class FEL_simulation_block(object):
 
         if getattr(self,'i_scan')==0:
                 if getattr(self,'stat_run')>1:
-                    plot_gen_stat(self.file_pout, run_inp=s_scan_inp, stage_inp=xrange(1), param_inp=[], s_param_inp=['p_int', 'energy','xrms','yrms','bunching','r_size_weighted','spec', 'error'], z_param_inp=['p_int', 'phi_mid_disp','xrms','#yrms', 'spec', 'bunching', 'wigner'], dfl_param_inp=[], run_param_inp=[], s_inp=['max','mean'], z_inp=[0,'end'], run_s_inp=[], run_z_inp=[], savefig=True, saveval=False,debug=0)
+                    plot_gen_stat(self.file_pout, run_inp=s_scan_inp, stage_inp=xrange(1), param_inp=[], s_param_inp=['p_int', 'energy','xrms','yrms','bunching','r_size_weighted','spec', 'error','p_mid'], z_param_inp=['p_int', 'phi_mid_disp','energy','el_e_spread','spec','xrms','yrms', 'spec', 'bunching', 'wigner'], dfl_param_inp=[], run_param_inp=[], s_inp=['max','mean'], z_inp=[0,'end'], run_s_inp=[], run_z_inp=[], savefig=True, saveval=False,debug=0)
                 elif getattr(self,'stat_run')==1:
                     if getattr(inp,'itdp')==0:
                         i_tdp = False
@@ -551,18 +567,20 @@ class FEL_simulation_block(object):
                         i_tdp = True
                     self.gen_outplot_single(run_inp= s_scan_inp, itdp = i_tdp,savefig=True)
         else:
-            self.gen_outplot_single(run_inp= s_scan_inp, itdp = False,savefig=True)                
+            self.gen_outplot_single(run_inp= s_scan_inp, itdp = False,savefig=True)
+        plt.close("all")
         
-    def GEN_simul_preproc(self,A_input):
+    def GEN_simul_preproc(self,A_input,i_aft=0):
         if not self.file_pout.endswith('/'):
             self.file_pout=self.file_pout+'/'
         
         inp_arr = []
         A_bbeam = ['rxbeam','rybeam','emitx','emity','alphax','alphay','xbeam','ybeam','pxbeam','pybeam']
-        A_simul = ['npart','ncar','zsep','delz','dmpfld','fbess0','dgrid','rmax0','xkx','xky','iwityp',
+        A_simul = ['alignradf','npart','ncar','zsep','delz','dmpfld','fbess0','dgrid','rmax0','xkx','xky','iwityp',
                    'nptr','lbc','zrayl','zstop','zwaist','delgam','xlamd','nscr','nscz','curpeak',
                    'iphsty','nharm','curlen','nbins','gamma0','isravg','isrsig','eloss','version',
-                   'multconv','imagl','convharm','idril','ffspec','ndcut','ibfield']
+                   'multconv','imagl','convharm','idril','ffspec','ndcut','ibfield','nslice','ntail',
+                   'ippart','ispart','ipradi','isradi']
         A_td = ['itdp','prad0','shotnoise']
         A_und = ['quadd', 'quadf','fl','dl','drl','nsec','nwig','aw0', 'awd']
 
@@ -609,8 +627,11 @@ class FEL_simulation_block(object):
         
         # Overwrite the simulation attributes of the input object with the ones defined in the input file
         for key in A_input.__dict__:
-            if (key in A_simul) or (key in A_und) or (key in A_td) or (key =='xlamds') or (key == 'f1st'):
+            if (key in A_simul) or (key in A_und) or (key in A_td) or (key =='xlamds') or (key == 'f1st') or (key == 'nslice') or (key == 'ntail'):
                 setattr(inp,key, getattr(A_input,key))
+        for key in ['edist','beam','dfl']:
+            if getattr(A_input,key)!=None:
+                setattr(inp,key,getattr(A_input,key))
         
         # Set up some input parameters
         if getattr(inp,'itdp')==0:
@@ -637,6 +658,7 @@ class FEL_simulation_block(object):
             inp=self.GEN_existent_beam_dist_dpa_rad(inp,'dfl')
         else:
             print('++++ No edist or beam or dpa or rad file available ++++++')
+        
         
         # Read ASTRA file.
         if hasattr(self,'i_astra') and getattr(self,'i_astra')==1 and hasattr(self,'astra_file'):
@@ -666,8 +688,10 @@ class FEL_simulation_block(object):
         if (getattr(self,'i_edist')==1) or (getattr(self,'i_match')==1):
             setattr(inp,'ntail',0)
         else:
-            setattr(inp,'ntail',int(-getattr(inp,'nslice')/2))
-
+            if (getattr(self,'i_edist')==0) and getattr(A_input,'ntail')==0 :
+                setattr(inp,'ntail',int(getattr(A_input,'ntail')))
+            else:
+                setattr(inp,'ntail',-int(np.floor(getattr(inp,'ntail')/2)))
         # Overwrite the simulation attributes if the user has new values for them defined in the input data structure
         if (hasattr(self, 'i_rewrite')) and (hasattr(self, 'par_rew')) and (getattr(self, 'i_rewrite') == 1):
             inp = self.GEN_rewrite_par(inp)
@@ -690,15 +714,18 @@ class FEL_simulation_block(object):
                         pass
                     else: 
                         raise                                  
-                if self.i_scan==1: 
+                if self.i_scan==1 and inp.f1st==1: 
                     inp= self.GEN_scan(n_par ,A_input,A_undulator,inp)                      
-                else:
+                elif self.i_scan==0 and inp.f1st==1:
                     inp.lat = A_undulator['Magnetic Lattice']
                     setattr(inp,'magin',1)
+                else:
+                    inp.lat =None
+                    setattr(inp,'magin',0)
                 inp_arr.append(inp)                   
                 launcher=get_genesis_launcher(self.gen_launch)
                 print('+++++ Starting simulation of noise realisation {0}'.format(run_id))
-                g = run_genesis(inp,launcher)
+                g = run_genesis(inp,launcher,i_aft=i_aft)
                 setattr(g,'filePath',str(inp.run_dir))
                 if (inp.itdp==1):
                     plot_gen_out_all(handle=g, savefig=True, showfig=False, choice=(1, 1, 1, 1, 3.05, 0, 0, 0, 0, 0, 0, 0, 0), vartype_dfl=complex128, debug=1)
@@ -710,4 +737,5 @@ class FEL_simulation_block(object):
                 inp.radfile=None
         print('++++ postprocessing (results saved in {0}results++++'.format(self.file_pout))
         self.post_processing(inp,s_scan)
+        plt.close("all")
         return inp_arr

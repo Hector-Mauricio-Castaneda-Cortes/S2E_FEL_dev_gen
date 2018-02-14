@@ -457,7 +457,7 @@ def plot_gen_out_evo(g, params=['und_quad', 'el_size', 'el_energy', 'el_bunching
         elif param == 'und':
             subfig_und(ax[-1], g, legend)
         elif param == 'el_size':
-            subfig_el_size(ax[-1], g, legend)
+            subfig_el_size(ax[-1], g, legend,which='averaged') #HMCC
         elif param == 'el_energy':
             subfig_el_energy(ax[-1], g, legend)
         elif param == 'el_bunching':

@@ -6,6 +6,8 @@ import random
 import pickle
 import numpy as np
 from scipy.optimize import *
+import os #HMCC
+import multiprocessing #HMCC
 
 try:
     from mpi4py import MPI
@@ -48,6 +50,7 @@ class Moga():
         self.log_print = True if MPI_RANK == 0 else False
         self.log_file = 'moga_result.dat' if MPI_RANK == 0 else None
         self.plt_file = 'moga_plot.dat' if MPI_RANK == 0 else None
+        self.save_file = 'moga_result_optimum.txt' if MPI_RANK == 0 else None
 
         self.fit_func = lambda x: None
         self.fit_func_args = []
@@ -60,7 +63,7 @@ class Moga():
             self.bounds_max.append(bounds[i][1])
 
 
-    def set_params(self, n_pop=None, weights=None, elite=None, penalty=None, n_gen=None, log_print=None, log_file=False, plt_file=False):
+    def set_params(self, n_pop=None, weights=None, elite=None, penalty=None, n_gen=None, log_print=None, log_file=False, plt_file=False, save_file=False):
 
         if n_pop != None:
             self.n_pop = n_pop
@@ -87,7 +90,9 @@ class Moga():
 
         if plt_file != False and MPI_RANK == 0:
             self.plt_file = plt_file
-
+        
+        if save_file != False and MPI_RANK == 0:#HMCC
+            self.save_file = save_file #HMCC
 
     def generate_ind(self):
         return [random.uniform(self.bounds_min[i], self.bounds_max[i]) for i in range(self.vars_num)]
@@ -169,7 +174,7 @@ class Moga():
                     val_nd.append(ind.fitness.values)
                 data_file.append(val_nd)
 
-                with open(self.plt_file, 'wb') as fh2:
+                with open(self.plt_file[:-4]+'gen_'+str(g)+'.dat', 'wb') as fh2: #HMCC create a plotting file (pareto diagram) per generation
                     pickle.dump(data_file, fh2, protocol=2)
 
             # Select individuals with best solution (best_inds[0] - with best fit_func_1 and best_inds[1] - with best fit_func_2)
@@ -313,10 +318,20 @@ class Moga():
             for j in range(self.problem_size):
                 if i.fitness.values[j] == self.inf_val:
                     inf_val_checker *= 0
-
             if inf_val_checker == 1:
-                g_inds.append(toolbox.clone(i))
-                gb[0] += 1
+                g_inds.append(toolbox.clone(i)) 
+                gb[0] += 1                      
+               ################ HMCC  adding the physics restrictions ######################################
+                #if (len(i.fitness.values)>1):
+                #    if i.fitness.values[1]<=7e-7 and i.fitness.values[2]<=7e-7 and i.fitness.values[3]<=0.2 and i.fitness.values[0]>=2.5e-3 and  i.fitness.values[0]<0.01:
+                #        g_inds.append(toolbox.clone(i))
+                #        gb[0] += 1
+                #    else:
+                #        gb[1]+= 1
+                #else: 
+                #    g_inds.append(toolbox.clone(i)) 
+                #    gb[0] += 1 
+                #######################################################################
             else:
                 gb[1] += 1
 
@@ -357,7 +372,13 @@ class Moga():
             for j in range(self.problem_size):
                 if ind.fitness.values[j] < best_ind[j].fitness.values[j]:
                     best_ind[j] = ind
-
+                    ##################################################
+                     #HMCC adding the physics restrictions 
+                    #if len(ind.fitness.values)>1:
+                    #    if ind.fitness.values[1]<=5.9e-7 and ind.fitness.values[2]<=5.9e-7 and ind.fitness.values[3]<=2e-1i.fitness.values[0]>=2.5e-3 and  i.fitness.values[0]<0.01:
+                    #        best_ind[j] = ind
+                        
+                     ################################
         #best_ind = [pop[0], pop[0]]
         #for ind in pop:
         #    if ind.fitness.values[0] < best_ind[0].fitness.values[0]:
@@ -487,7 +508,25 @@ class Moga():
             for ind in result_nd:
                 fh1.write("ind --> fit_func: " + str(ind) + ' --> ' + str(ind.fitness.values) + '\n')
             fh1.close()
-
+        #HMCC###  
+        with open(self.save_file,'w') as f:
+            for ind in result_nd:
+                #if len(ind.fitness.values)>1:
+                #    if ind.fitness.values[1]<=7e-7 and ind.fitness.values[2]<=7e-7 and ind.fitness.values[3]<=0.2 and ind.fitness.values[0]>=2.5e-3 and ind.fitness.values[0]<0.01:
+                for i_n,n_n in enumerate(ind):
+                    if i_n < len(ind)-1:
+                        f.write('{}\t'.format(n_n))
+                    else:
+                        f.write('{}\n'.format(n_n))
+                    #else:
+                    #    continue
+                #else:
+                #    for i_n,n_n in enumerate(ind):
+                #        if i_n < len(ind)-1:
+                #            f.write('{}\t'.format(n_n))
+                #        else:
+                #            f.write('{}\n'.format(n_n))
+        #HMCC
         return result_nd
 
 

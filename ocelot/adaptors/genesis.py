@@ -313,7 +313,8 @@ class GenesisInput:
         self.idump = 0  # If set to a non-zero value the complete particle and field distribution is dumped at the undulator exit into two outputfiles.
         self.idmpfld = 0  # Similar to IDUMP but only for the field distribution.
         self.idmppar = 0  # Similar to IDUMP but only for the particle distribution.
-        self.lout = [1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        self.lout = [1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0] #HMCC new format
+       # self.lout = [1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] HMCC
         #            1  2  3  4  5  6  7  8  9  10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
         # 1. radiation power
         # 2. logarithmic derivative of the power growth
@@ -652,8 +653,8 @@ class GenesisElectronDist:
         mean_ypy = mean(y * yp)
         mean_g = mean(self.g)
 
-        tws.emit_x = mean_g*(mean_x2 * mean_px2 - mean_xpx**2)**0.5/mean_g
-        tws.emit_y = mean_g*(mean_y2 * mean_py2 - mean_ypy**2)**0.5/mean_g
+        tws.emit_x = mean_g*(mean_x2 * mean_px2 - mean_xpx**2)**0.5 #HMCC erase /mean_g
+        tws.emit_y = mean_g*(mean_y2 * mean_py2 - mean_ypy**2)**0.5 #HMCC erase /mean_g
         tws.beta_x = mean_g * mean_x2 / tws.emit_x
         tws.beta_y = mean_g * mean_y2 / tws.emit_y
         tws.alpha_x = -mean_g * mean_xpx / tws.emit_x
@@ -965,7 +966,7 @@ class WaistScanResults():
 
 
 
-def run_genesis(inp, launcher, read_level=2, assembly_ver='pyt', debug=1):
+def run_genesis(inp, launcher, read_level=2, assembly_ver='pyt', i_aft=0,debug=1):#HMCC
     '''
     Main function for executing Genesis code
     inp               - GenesisInput() object with genesis input parameters
@@ -1026,7 +1027,7 @@ def run_genesis(inp, launcher, read_level=2, assembly_ver='pyt', debug=1):
         if inp.beam != None:
             if debug > 1:
                 print ('    writing ' + inp_file + '.beam')
-            open(inp_path + '.beam', 'w').write(beam_file_str(inp.beam))
+            open(inp_path + '.beam', 'w').write(beam_file_str(inp.beam,i_aft))#HMCC
             inp.beamfile = inp_file + '.beam'
 
     if inp.edistfile == None:
@@ -2125,7 +2126,7 @@ def max_dpa_dens(out, dpa, slice_pos=None, slice_num=None, repeat=1, bins=(50,50
     gamma_max = gamma_scale[gamma_idx[1]]
     return gamma_max[0], slice_num
 
-def dpa2edist(out, dpa, num_part=1e5, smear=1, debug=1):
+def dpa2edist(out, dpa, num_part=1e5, smear=1,debug=1):
     '''
     reads GenesisParticlesDump() object
     returns GenesisElectronDist() object
@@ -2138,9 +2139,9 @@ def dpa2edist(out, dpa, num_part=1e5, smear=1, debug=1):
 
     assert out('itdp') == 1.0, '! steadystate Genesis simulation, dpa2dist() not implemented yet!'#HMCC
 
-    npart = int(out('npart'))
-    # nslice=int(out('nslice'))
-    nslice = int(out.nSlices * out('ishsty'))
+    npart = int(out('npart')) 
+    nslice=int(out('nslice')* out('ishsty'))
+    #nslice = int(out.nSlices * out('ishsty')) 
     nbins = int(out('nbins'))
     xlamds = out('xlamds')
     zsep = int(out('zsep'))
@@ -2210,12 +2211,12 @@ def dpa2edist(out, dpa, num_part=1e5, smear=1, debug=1):
     edist.xp /= edist.g
     edist.yp /= edist.g
 
-    edist.x = np.flipud(edist.x)
-    edist.y = np.flipud(edist.y)
-    edist.xp = np.flipud(edist.xp)
-    edist.yp = np.flipud(edist.yp)
-    edist.t = np.flipud(edist.t)
-    edist.g = np.flipud(edist.g)
+    edist.x = np.flipud(edist.x) 
+    edist.y = np.flipud(edist.y) 
+    edist.xp = np.flipud(edist.xp) 
+    edist.yp = np.flipud(edist.yp) 
+    edist.t = np.flipud(edist.t) 
+    edist.g = np.flipud(edist.g) 
 
     edist.part_charge = out.beam_charge / edist.len()
     # edist.charge=out.beam_charge
@@ -2429,7 +2430,7 @@ def write_edist_file(edist, filePath=None, debug=1):
         print('      done in %.2f sec' % (time.time() - start_time))
 
 
-def edist2beam(edist, step=1e-7):
+def edist2beam(edist, step=1e-7,i_aft=0):#HMCC afterburner flag
     '''
     reads GenesisElectronDist()
     returns GenesisBeam()
@@ -2446,7 +2447,9 @@ def edist2beam(edist, step=1e-7):
     npoints = int(dist_t_window / t_step)
     t_step = dist_t_window / npoints
     beam = GenesisBeam()
-    for parm in ['I',
+    ##HMCC##
+    if i_aft ==0:
+        array = ['I',
                  'z',
                  'ex',
                  'ey',
@@ -2460,7 +2463,32 @@ def edist2beam(edist, step=1e-7):
                  'py',
                  'g0',
                  'dg',
-                 ]:
+                 'npart' #HMCC
+                 ]
+    else:
+        array = ['z',
+                 'g0',
+                 'dg',
+                 'npart' #HMCC
+                 ]
+    for parm in array:
+    ##HMCC##
+#    for parm in ['I',
+#                 'z',
+#                 'ex',
+#                 'ey',
+#                 'betax',
+#                 'betay',
+#                 'alphax',
+#                 'alphay',
+#                 'x',
+#                 'y',
+#                 'px',
+#                 'py',
+#                 'g0',
+#                 'dg',
+#                 'npart' #HMCC
+#                 ]:
         setattr(beam, parm, np.zeros((npoints - 1)))
 
     for i in range(npoints - 1):
@@ -2475,25 +2503,42 @@ def edist2beam(edist, step=1e-7):
             dist_px = edist.xp[indices]
             dist_py = edist.yp[indices]
             dist_mean_g = mean(dist_g)
-
-            beam.I[i] = sum(indices) * part_c / t_step
-            beam.g0[i] = mean(dist_g)
-            beam.dg[i] = np.std(dist_g)
-            beam.x[i] = mean(dist_x)
-            beam.y[i] = mean(dist_y)
-            beam.px[i] = mean(dist_px)
-            beam.py[i] = mean(dist_py)
-            beam.ex[i] = dist_mean_g * (mean(dist_x**2) * mean(dist_px**2) - mean(dist_x * dist_px)**2)**0.5
+            beam.npart[i]=sum(indices) #HMCC particles per slice
+            ### HMCC ###
+            if i_aft ==0: #HMCC
+                beam.I[i] = sum(indices) * part_c / t_step
+                beam.g0[i] = mean(dist_g)
+                beam.dg[i] = np.std(dist_g)
+                beam.x[i] = mean(dist_x)
+                beam.y[i] = mean(dist_y)
+                beam.px[i] = mean(dist_px)
+                beam.py[i] = mean(dist_py)
+                beam.ex[i] = dist_mean_g * (mean(dist_x**2) * mean(dist_px**2) - mean(dist_x * dist_px)**2)**0.5
             # if beam.ex[i]==0: beam.ey[i]=1e-10
-            beam.ey[i] = dist_mean_g * (mean(dist_y**2) * mean(dist_py**2) - mean(dist_y * dist_py)**2)**0.5
+                beam.ey[i] = dist_mean_g * (mean(dist_y**2) * mean(dist_py**2) - mean(dist_y * dist_py)**2)**0.5
             # if beam.ey[i]==0: beam.ey[i]=1e-10
-            beam.betax[i] = dist_mean_g * mean(dist_x**2) / beam.ex[i]
-            beam.betay[i] = dist_mean_g * mean(dist_y**2) / beam.ey[i]
-            beam.alphax[i] = -dist_mean_g * mean(dist_x * dist_px) / beam.ex[i]
-            beam.alphay[i] = -dist_mean_g * mean(dist_y * dist_py) / beam.ey[i]
+                beam.betax[i] = dist_mean_g * mean(dist_x**2) / beam.ex[i]
+                beam.betay[i] = dist_mean_g * mean(dist_y**2) / beam.ey[i]
+                beam.alphax[i] = -dist_mean_g * mean(dist_x * dist_px) / beam.ex[i]
+                beam.alphay[i] = -dist_mean_g * mean(dist_y * dist_py) / beam.ey[i] 
 
-    idx = np.where(np.logical_or.reduce((beam.I == 0, beam.g0 == 0, beam.betax > mean(beam.betax) * 10, beam.betay > mean(beam.betay) * 10)))
-    del beam[idx]
+            else: 
+                beam.g0[i] = mean(dist_g)
+                beam.dg[i] = np.std(dist_g)
+            ## HMCC ##
+                
+
+    if i_aft==0:
+        idx = np.where(np.logical_or.reduce((beam.I == 0, beam.g0 == 0, beam.betax > mean(beam.betax) * 10, beam.betay > mean(beam.betay) * 10)))
+        del beam[idx]
+    else:
+        for i_g0,g0 in enumerate(beam.g0):
+            if g0 ==0:
+                del beam[i_g0]
+            else:
+                continue
+    #del beam[idx] HMCC
+    ### HMCC
     # for i in reversed(range(npoints-1)):
     # if beam.I[i]==0:
     # np.delete(beam.I,i)
@@ -2509,10 +2554,14 @@ def edist2beam(edist, step=1e-7):
     # np.delete(beam.betay,i)
     # np.delete(beam.alphax,i)
     # np.delete(beam.alphay,i)
-
-    beam.columns = ['ZPOS', 'GAMMA0', 'DELGAM', 'EMITX', 'EMITY', 'BETAX', 'BETAY', 'XBEAM', 'YBEAM', 'PXBEAM', 'PYBEAM', 'ALPHAX', 'ALPHAY', 'CURPEAK', 'ELOSS']
-
-    beam.idx_max = np.argmax(beam.I)
+    ###HMCC
+    if i_aft ==0:
+        beam.columns = ['ZPOS', 'GAMMA0', 'DELGAM', 'EMITX', 'EMITY', 'BETAX', 'BETAY', 'XBEAM', 'YBEAM', 'PXBEAM', 'PYBEAM', 'ALPHAX', 'ALPHAY', 'CURPEAK', 'ELOSS'] 
+        beam.idx_max = np.argmax(beam.I)
+    else:
+        beam.columns = ['ZPOS', 'GAMMA0', 'DELGAM'] 
+    ###HMCC
+    #beam.idx_max = np.argmax(beam.I) #HMCC
     beam.eloss = np.zeros_like(beam.z)
     # beam.fileName=edist.fileName+'.beam'
     beam.filePath = edist.filePath + '.beam'
@@ -2610,7 +2659,7 @@ def read_beam_file(filePath, debug=1):
     return beam
 
 
-def beam_file_str(beam):
+def beam_file_str(beam,i_aft=0):#HMCC
     '''
     reads GenesisBeam()
     returns string of electron beam file, suitable for Genesis
@@ -2624,8 +2673,9 @@ def beam_file_str(beam):
     header += "\n"
 
     f_str = header
-
-    for parm in [['z', 'ZPOS'],
+    ### HMCC
+    if i_aft==0:
+        array = [['z', 'ZPOS'],
                  ['I', 'CURPEAK'],
                  ['ex', 'EMITX'],
                  ['ey', 'EMITY'],
@@ -2640,7 +2690,31 @@ def beam_file_str(beam):
                  ['g0', 'GAMMA0'],
                  ['dg', 'DELGAM'],
                  ['eloss', 'ELOSS'],
-                 ]:
+                 ]
+    else: 
+        array=[['z', 'ZPOS'],
+               ['g0', 'GAMMA0'],
+               ['dg', 'DELGAM']
+               ]
+
+    #for parm in [['z', 'ZPOS'],
+    #             ['I', 'CURPEAK'],
+    #             ['ex', 'EMITX'],
+    #             ['ey', 'EMITY'],
+    #             ['betax', 'BETAX'],
+    #             ['betay', 'BETAY'],
+    #             ['alphax', 'ALPHAX'],
+    #             ['alphay', 'ALPHAY'],
+    #             ['x', 'XBEAM'],
+    #             ['y', 'YBEAM'],
+    #             ['px', 'PXBEAM'],
+    #             ['py', 'PYBEAM'],
+    #             ['g0', 'GAMMA0'],
+    #             ['dg', 'DELGAM'],
+    #             ['eloss', 'ELOSS'],
+    #             ]:
+    ### HMCC
+    for parm in array: #HMCC
         try:
             beam.column_values[parm[1]] = getattr(beam, parm[0])
         except:
@@ -2952,13 +3026,13 @@ def find_transform(g1, g2):
     return np.linalg.inv(M3 * M2 * M1), M3 * M2d * M1
 
 
-def write_beam_file(filePath, beam, debug=0):
+def write_beam_file(filePath, beam, i_aft,debug=0):#HMCC
     if debug > 0:
         print ('    writing beam file')
     start_time = time.time()
 
     fd = open(filePath, 'w')
-    fd.write(beam_file_str(beam))
+    fd.write(beam_file_str(beam,i_aft))#HMCC
     fd.close()
 
     if debug > 0:
@@ -3090,7 +3164,6 @@ def generate_lattice(lattice, unit=1.0, energy=None, debug=False, min_phsh = Fal
     undLat = ''
     quadLat = ''
     driftLat = ''
-
     e0 = lattice.sequence[0]
     prevPos = 0
     prevLen = 0
