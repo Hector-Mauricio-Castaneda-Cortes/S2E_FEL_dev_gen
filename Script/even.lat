@@ -1,0 +1,15 @@
+# header is included
+? VERSION= 1.00  including new format
+? UNITLENGTH= 0.0290 :unit length in header
+AW      0.8060E+00    8    0
+AW      0.0000E+00    7    0
+QF     -6.5000E+00    2    0
+QF      0.0000E+00    0   13
+QX      0.0000E+00   15    0
+QY      0.0000E+00   15    0
+AD      0.8060E+00    7    8
+SL      0.0000E+00   15    0
+CX      0.0000E+00   15    0
+CY      0.0000E+00   15    0
+AX      0.0000E+00   15    0
+AY      0.0000E+00   15    0
