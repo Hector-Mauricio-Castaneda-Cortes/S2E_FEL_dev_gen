@@ -220,9 +220,10 @@ class FEL_simulation_block(object):
         with open(f_path+'/beta_input_file.in','w') as f:
             f.write('mod_file.in')
         f.close()
-        with open(f_path+'/'+inp0.latticefile,'w') as f:
-            f.write(generate_lattice(inp0.lat,unit=inp0.xlamd*inp0.delz,energy=inp0.gamma0*m_e_GeV))   
-        f.close()
+        if inp.latticefile != None or inp0.lat != None:
+            with open(f_path+'/'+inp0.latticefile,'w') as f:
+                f.write(generate_lattice(inp0.lat,unit=inp0.xlamd*inp0.delz,energy=inp0.gamma0*m_e_GeV))   
+                f.close()
         try:
             os.system('./betamatch < beta_input_file.in')
         except:
@@ -685,7 +686,7 @@ class FEL_simulation_block(object):
             else:
                 setattr(inp,'nslice',getattr(A_input,'nslice'))
 
-        if (getattr(self,'i_edist')==1) or (getattr(self,'i_match')==1):
+        if (getattr(self,'i_edist')==1):
             setattr(inp,'ntail',0)
         else:
             if (getattr(self,'i_edist')==0) and getattr(A_input,'ntail')==0 :
