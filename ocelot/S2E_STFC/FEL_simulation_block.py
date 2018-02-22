@@ -692,7 +692,7 @@ class FEL_simulation_block(object):
             if (getattr(self,'i_edist')==0) and getattr(A_input,'ntail')==0 :
                 setattr(inp,'ntail',int(getattr(A_input,'ntail')))
             else:
-                setattr(inp,'ntail',-int(np.floor(getattr(inp,'ntail')/2)))
+                setattr(inp,'ntail',-int(np.floor(getattr(inp,'nslice')/2)))
         # Overwrite the simulation attributes if the user has new values for them defined in the input data structure
         if (hasattr(self, 'i_rewrite')) and (hasattr(self, 'par_rew')) and (getattr(self, 'i_rewrite') == 1):
             inp = self.GEN_rewrite_par(inp)
