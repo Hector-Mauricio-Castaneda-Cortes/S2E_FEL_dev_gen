@@ -8,7 +8,7 @@ from ocelot.gui.genesis_plot import *
 
 def main(data0):
     print('+++++ S2E afterburner ++++++')
-    f_obj = s2e_ocelot.s2e_afterburner(data0)
+    f_obj = s2e_afterburner(data0)
     print('+++++ S2E afterburner (Modulator) ++++++')
     tic0 = time.clock()
     f_mod=f_obj.modulator_amplifier('mod')

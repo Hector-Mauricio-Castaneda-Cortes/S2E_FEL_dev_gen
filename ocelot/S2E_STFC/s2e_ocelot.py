@@ -18,7 +18,7 @@ from copy import copy,deepcopy
 
 
 class s2e_afterburner(FEL_simulation_block):
-    __pathgf = 'C:/Users/qfi29231/Documents/S2E_FEL_dev_gen/Script/'
+    __pathgf = '/home/qfi29231/riley_S2E/'
     def __init__(self,*initial_data,**kwargs):
         super(s2e_afterburner,self).__init__(*initial_data,**kwargs)
         self.__seedlambda = 3e-6
@@ -136,18 +136,18 @@ class s2e_afterburner(FEL_simulation_block):
 	
         for sliceindex in range (0,int(numslice)):
             for i in range(0,scalefactor-1):
-            chunkdata=np.zeros(3)
-            count0 = count1
-            count1 = count1 + hist[i]
-            tempdata=data00[count0:count1,:]
-            e_s.append(sliceindex*slicespace + slicewidth*((i+1.0)/scalefactor))
-            e_g.append(np.mean(tempdata[:,1]))
-            e_dg.append(np.std(tempdata[:,1]))
-            setattr(beam,'z',np.array(e_s))
-            setattr(beam,'g0',np.array(e_g))
-            setattr(beam,'dg',np.array(e_dg))
-            setattr(inp,'beam',beam)
-            setattr(inp,'dpa',None)
+                chunkdata=np.zeros(3)
+                count0 = count1
+                count1 = count1 + hist[i]
+                tempdata=data00[count0:count1,:]
+                e_s.append(sliceindex*slicespace + slicewidth*((i+1.0)/scalefactor))
+                e_g.append(np.mean(tempdata[:,1]))
+                e_dg.append(np.std(tempdata[:,1]))
+        setattr(beam,'z',np.array(e_s))
+        setattr(beam,'g0',np.array(e_g))
+        setattr(beam,'dg',np.array(e_dg))
+        setattr(inp,'beam',beam)
+        setattr(inp,'dpa',None)
         return inp   
     
     def prep_mod_amp_aft(self, path_mod,inp):
