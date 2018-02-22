@@ -1,18 +1,21 @@
-#!/usr/bin/python
 '''S2E_afterburner class
-
-HMCC: 14-02-17 Implementation of the daughter class S2E_afterburner(creation of class with corresponding methods)
+HMCC: 14-02-18 Implementation of the daughter class S2E_afterburner(creation of class with corresponding methods)
+HMCC: 22-02-18 Correction to the modulator_amplifier method in order to do betamatching of twiss parameters,
+               before the amplification stage starts.
 '''
 #################################################
+
 from ocelot.adaptors.genesis import *
 from ocelot.gui.genesis_plot import *
 from ocelot.S2E_STFC.FEL_simulation_block import *
 from ocelot.S2E_STFC.ming_xie import *
+from ocelot.cpbd.beam import Twiss
 import numpy as np
 import matplotlib.pyplot as plt
 import os,sys,time
 from shutil import *
 from copy import copy,deepcopy
+
 
 class s2e_afterburner(FEL_simulation_block):
     __pathgf = 'C:/Users/qfi29231/Documents/S2E_FEL_dev_gen/Script/'
@@ -128,25 +131,23 @@ class s2e_afterburner(FEL_simulation_block):
         ph_file = (dpa_f.ph).reshape(self.nslicemod,self.npart)
         data00 = np.column_stack((ph_file,g_file))
         data00[:,0]= data00[:,0]+4
-        #data00.view('i8','i8').sort(order=['f0'],axis=0)
         partnum =data00.shape[0]
-	hist, bin_edges = np.histogram(data00[:,0],scalefactor)
+        hist, bin_edges = np.histogram(data00[:,0],scalefactor)
 	
-	for sliceindex in range (0,int(numslice)):
+        for sliceindex in range (0,int(numslice)):
             for i in range(0,scalefactor-1):
-		
-		chunkdata=np.zeros(3)
-		count0 = count1
-		count1 = count1 + hist[i]
-		tempdata=data00[count0:count1,:]
-                e_s.append(sliceindex*slicespace + slicewidth*((i+1.0)/scalefactor))
-                e_g.append(np.mean(tempdata[:,1]))
-                e_dg.append(np.std(tempdata[:,1]))
-        setattr(beam,'z',np.array(e_s))
-        setattr(beam,'g0',np.array(e_g))
-        setattr(beam,'dg',np.array(e_dg))
-        setattr(inp,'beam',beam)
-        setattr(inp,'dpa',None)
+            chunkdata=np.zeros(3)
+            count0 = count1
+            count1 = count1 + hist[i]
+            tempdata=data00[count0:count1,:]
+            e_s.append(sliceindex*slicespace + slicewidth*((i+1.0)/scalefactor))
+            e_g.append(np.mean(tempdata[:,1]))
+            e_dg.append(np.std(tempdata[:,1]))
+            setattr(beam,'z',np.array(e_s))
+            setattr(beam,'g0',np.array(e_g))
+            setattr(beam,'dg',np.array(e_dg))
+            setattr(inp,'beam',beam)
+            setattr(inp,'dpa',None)
         return inp   
     
     def prep_mod_amp_aft(self, path_mod,inp):
@@ -155,19 +156,17 @@ class s2e_afterburner(FEL_simulation_block):
         dpa_f = read_dpa_file_out(f_out)
         setattr(dpa_f,'filePath',path_mod+'mod'+'_dpa') 
         setattr(inp,'dpa',dpa_f)
-        #inp0 = self.generation_beam(inp0)
-        #setattr(inp0.beam,'filePath',path_mod+'mod'+'_beam') 
         edist_dpa = dpa2edist(f_out,dpa_f,num_part = int(int(self.npart)*int(f_out('nslice'))),smear=0)
-        #edist_dpa= dpa2edist_aft(f_out,dpa_f,npart=int(self.npart),nbins=1,num_part=int(int(self.npart)*int(self.nslicemod)))
-        tpulse = speed_of_light*(np.amax(edist_dpa.t)-np.amin(edist_dpa.t))
-        ebeam = edist2beam(edist_dpa,step=float(self.outlambda),i_aft=1)
-        setattr(ebeam,'filePath',path_mod+'mod'+'_beam') 
+        #ebeam = edist2beam(edist_dpa,step=float(self.outlambda),i_aft=1)
+        #setattr(ebeam,'filePath',path_mod+'mod'+'_beam') 
         setattr(edist_dpa,'filePath',path_mod+'mod'+'_edist') 
         plot_edist(edist_dpa,figsize=20,savefig=True,showfig=False,scatter=True,plot_x_y=True,plot_xy_s=False) 
         plot_edist(edist_dpa,figsize=20,savefig=True,showfig=False,scatter=True,plot_x_y=False,plot_xy_s=True)
-        plot_dpa_bucket(dpa_f, slice_num=None, repeat=1, GeV=0, figsize=4, cmap=def_cmap, scatter=False, energy_mean=None, legend=True, fig_name=None, savefig=True, showfig=False, suffix='mod', bins=(f_out('nbins'),f_out('nbins')), debug=1, return_mode_gamma=0)
-        setattr(inp0,'beam',ebeam)
-        setattr(inp0,'edist',None)
+        plot_dpa_bucket(dpa_f, slice_num=None, repeat=1, GeV=0, figsize=4, cmap=def_cmap, scatter=False,
+                        energy_mean=None, legend=True, fig_name=None, savefig=True, showfig=False, suffix='mod',
+                        bins=(f_out('nbins'),f_out('nbins')), debug=1, return_mode_gamma=0)
+        setattr(inp0,'beam',None)
+        setattr(inp0,'edist',edist_dpa)
         setattr(inp0,'dpa',None)
         setattr(inp0,'beamfile',None)
         setattr(inp0,'partfile',None)
@@ -208,18 +207,27 @@ class s2e_afterburner(FEL_simulation_block):
                 f_out = read_out_file(self.search_input(f_inp2[0].run_dir,'.gout'))
                 f_out.filePath = self.search_input(f_inp2[0].run_dir,'.gout')
                 f_inpamp = f_inp2[0]
-            elif i_f_mamp == 'amp': 
+            elif i_f_mamp == 'amp':
+                tw = Twiss()
                 f_inp2 =  self.prep_mod_amp_aft(f_old+'mod/scan_0/ip_seed_-1/' ,f_inp)
-                #f_inp0 = super(s2e_afterburner,self).GEN_simul_preproc(f_inp2)
+                f_inp2 = super(s2e_afterburner,self).beta_matching(f_inp2,f_old)
+                dict_tw = {'beta_x':getattr(f_inp2,'gamma0')*(getattr(f_inp2,'rxbeam')**2)/(getattr(f_inp2,'emitx')), 
+                           'beta_y':getattr(f_inp2,'gamma0')*(getattr(f_inp2,'rybeam')**2)/getattr(f_inp2,'emity'), 
+                           'alpha_x':getattr(f_inp2,'alphax'),
+                           'alpha_y':getattr(f_inp2,'alphay')}                 
+                for key,value in dict_tw.items():
+                    setattr(tw,key,value)                
+                setattr(f_inp2,'edist',rematch_edist(getattr(f_inp2,'edist'),tw))
+                setattr(f_inp2,'beam',edist2beam(rematch_edist(getattr(f_inp2,'edist'),tw),step=float(self.outlambda),i_aft=1))
+                setattr(f_inp2.beam,'filePath',f_old+'mod/scan_0/ip_seed_-1/'+'mod'+'_beam')
+                setattr(f_inp2,'edist',None)
                 f_inp0 = self.GEN_simul_preproc(f_inp2)
                 f_inpamp = f_inp0[0]
                 setattr(f_inpamp,'beam',None)
-                setattr(f_inpamp,'edist',None)
                 setattr(f_inpamp,'dpa',None)
                 setattr(f_inpamp,'beamfile',None)
                 setattr(f_inpamp,'partfile',None)
                 setattr(f_inpamp,'edistfile',None)
-               # f_inpamp = self.prep_mod_amp_aft(f_old+i_f_mamp+'/scan_0/ip_seed_-1/',f_inp0[0],'amp')
                 f_oamp = read_out_file(self.search_input(f_inp0[0].run_dir,'.gout'))
                 f_oamp.filePath = self.search_input(f_inp0[0].run_dir,'.gout')
                 setattr(f_inpamp,'fieldfile',None)
@@ -274,9 +282,7 @@ class s2e_afterburner(FEL_simulation_block):
             setattr(f_inp2,'radfile',None)
             setattr(f_inp2,'latticefile',None)
         return g_out
-        
 
-    
     def run_GENESIS(self,inp):
         s_scan = range(1)  
         num = self.stat_run
@@ -292,12 +298,7 @@ class s2e_afterburner(FEL_simulation_block):
                 inp.run_dir = getattr(self,'file_pout')+'scan_'+str(n_par)+'/ip_seed_'+str(inp.ipseed)+'/' 
                 try:
                     os.makedirs(inp.run_dir) 
-                    copyfile(getattr(self,'pathgf')+inp.latticefile,inp.run_dir+inp.latticefile) 
-                    #if f_path !=None:
-                    #    copyfile(f_path+'run.0.gout.dpa',inp.run_dir+'run.0.inp.dpa')
-                    #    copyfile(f_path+'run.0.gout.dfl',inp.run_dir+'run.0.inp.dfl')
-                    #else:
-                    #    pass
+                    copyfile(getattr(self,'pathgf')+inp.latticefile,inp.run_dir+inp.latticefile)
                 except OSError as exc:
                     if (exc.errno == errno.EEXIST) and os.path.isdir(self.file_pout+'scan'+str(n_par)+'/run_'+str(run_id)) and (inp.latticefile !=None):
                         pass
@@ -308,8 +309,6 @@ class s2e_afterburner(FEL_simulation_block):
                 print('+++++ Starting simulation of noise realisation {0}'.format(run_id))
                 g = run_genesis(inp,launcher,i_aft=1)
                 setattr(g,'filePath',str(inp.run_dir))
-                #if (inp.itdp==1):
-                #    plot_gen_out_all(handle=g, savefig=True, showfig=False, choice=(1, 1, 1, 1, 3.05, 0, 0, 0, 0, 0, 0, 1, 0), vartype_dfl=complex128, debug=1)
                 inp.latticefile=None
                 inp.outputfile=None
                 inp.edistfile=None
@@ -324,14 +323,3 @@ class s2e_afterburner(FEL_simulation_block):
     def GEN_simul_preproc(self,f_inp):
         f_inp2 = super(s2e_afterburner,self).GEN_simul_preproc(f_inp,i_aft=1)
         return f_inp2
-
-
-
-             
-                         
-    
-        
-        
-        
-
-    
