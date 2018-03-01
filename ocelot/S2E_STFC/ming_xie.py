@@ -324,9 +324,9 @@ class MingXie(object):
         for ticks in ax_mxie[1,0].yaxis.get_major_ticks():
             ticks.label.set_fontsize(8) 
         ax_mxie[1,0].yaxis.offsetText.set_fontsize(8)
-
-        ax_mxie[1,1].plot(1e6*np.array(beam_z.z),beam_z.npart,'--',color='navy')
-        ax_mxie[1,1].scatter(1e6*np.array(beam_z.z),beam_z.npart,color='navy')
+        
+        ax_mxie[1,1].plot(1e6*np.array(beam_z.z),self.npart,'--',color='navy')
+        ax_mxie[1,1].scatter(1e6*np.array(beam_z.z),self.npart,color='navy')
         ax_mxie[1,1].tick_params('N', color='navy')
         ax_mxie[1,1].set_xlabel(r's[$\mu$m]')
         ax_mxie[1,1].set_ylabel(r'N', color='navy')

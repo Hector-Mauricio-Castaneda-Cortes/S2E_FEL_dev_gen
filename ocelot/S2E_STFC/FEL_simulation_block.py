@@ -689,7 +689,7 @@ class FEL_simulation_block(object):
         if (getattr(self,'i_edist')==1):
             setattr(inp,'ntail',0)
         else:
-            if (getattr(self,'i_edist')==0) and getattr(A_input,'ntail')==0 :
+            if (getattr(self,'i_edist')==0) and getattr(A_input,'ntail')!=0 :
                 setattr(inp,'ntail',int(getattr(A_input,'ntail')))
             else:
                 setattr(inp,'ntail',-int(np.floor(getattr(inp,'nslice')/2)))
