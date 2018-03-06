@@ -2438,7 +2438,12 @@ def edist2beam(edist, step=1e-7,i_aft=0):#HMCC afterburner flag
     '''
 
     from numpy import mean, std
-
+    dxx=0 #HMCC
+    dyy=0#HMCC
+    dpxpx=0#HMCC
+    dpypy=0#HMCC
+    dxp=0#HMCC
+    dyp=0#HMCC
     part_c = edist.part_charge
     t_step = step / speed_of_light
     t_min = min(edist.t)
@@ -2503,24 +2508,49 @@ def edist2beam(edist, step=1e-7,i_aft=0):#HMCC afterburner flag
             dist_px = edist.xp[indices]
             dist_py = edist.yp[indices]
             dist_mean_g = mean(dist_g)
-            beam.npart[i]=sum(indices) #HMCC particles per slice
+           
             ### HMCC ###
-            if i_aft ==0: #HMCC
+            if i_aft ==0: #HMCC 
+                beam.npart[i]= len(dist_x) #HMCC particles per slice
                 beam.I[i] = sum(indices) * part_c / t_step
-                beam.g0[i] = mean(dist_g)
+                beam.g0[i] = np.mean(dist_g)
                 beam.dg[i] = np.std(dist_g)
-                beam.x[i] = mean(dist_x)
-                beam.y[i] = mean(dist_y)
-                beam.px[i] = mean(dist_px)
-                beam.py[i] = mean(dist_py)
-                beam.ex[i] = dist_mean_g * (mean(dist_x**2) * mean(dist_px**2) - mean(dist_x * dist_px)**2)**0.5
+                beam.x[i] = np.mean(dist_x)
+                beam.y[i] = np.mean(dist_y)
+                beam.px[i] = np.mean(dist_px)
+                beam.py[i] = np.mean(dist_py)
+                # HMCC mimic implementation of elegant2genesis
+                for i_x, dx in enumerate(dist_x):
+                    dxx = dxx + np.square(dist_x[i_x]-beam.x[i])
+                    dyy = dyy + np.square(dist_y[i_x]-beam.y[i])
+                    dpxpx = dpxpx + np.square(dist_px[i_x]-beam.px[i]) 
+                    dpypy = dpypy + np.square(dist_py[i_x]-beam.py[i])
+                    dxp = dxp + ((dist_x[i_x]-beam.x[i])*(dist_px[i_x]-beam.px[i]))
+                    dyp = dyp + ((dist_y[i_x]-beam.y[i])*(dist_py[i_x]-beam.py[i]))
+                
+                N_p = len(dist_x)
+                dxx = float(dxx/N_p)
+                dyy = float(dyy/N_p) 
+                dpxpx = float(dpxpx/N_p) 
+                dpypy = float(dpypy/N_p)
+                dxp= float(dxp/N_p)
+                dyp = float(dyp/N_p)
+                beam.ex[i]= beam.g0[i] *np.sqrt((dxx*dpxpx)-np.square(dxp))
+                beam.ey[i]= beam.g0[i] *np.sqrt((dyy*dpypy)-np.square(dyp)) 
+                beam.betax[i] = dist_mean_g * mean(dxx) / beam.ex[i] 
+                beam.betay[i] = dist_mean_g * mean(dyy) / beam.ey[i] 
+                beam.alphax[i] = -dist_mean_g * dxp / beam.ex[i]
+                beam.alphay[i] = -dist_mean_g * dyp / beam.ey[i]   
+                #HMCC
+               
+                #beam.ex[i] = beam.g0[i] * np.sqrt(mean(dist_x**2) * mean(dist_px**2) - mean(dist_x * dist_px)**2) #HMCC comment
             # if beam.ex[i]==0: beam.ey[i]=1e-10
-                beam.ey[i] = dist_mean_g * (mean(dist_y**2) * mean(dist_py**2) - mean(dist_y * dist_py)**2)**0.5
+                #beam.ey[i] = beam.g0[i] * np.sqrt(mean(dist_y**2) * mean(dist_py**2) - mean(dist_y * dist_py)**2) #HMCC comment
             # if beam.ey[i]==0: beam.ey[i]=1e-10
-                beam.betax[i] = dist_mean_g * mean(dist_x**2) / beam.ex[i]
-                beam.betay[i] = dist_mean_g * mean(dist_y**2) / beam.ey[i]
-                beam.alphax[i] = -dist_mean_g * mean(dist_x * dist_px) / beam.ex[i]
-                beam.alphay[i] = -dist_mean_g * mean(dist_y * dist_py) / beam.ey[i] 
+                #beam.betax[i] = dist_mean_g * mean(dist_x**2) / beam.ex[i] HMCC comment
+                #beam.betay[i] = dist_mean_g * mean(dist_y**2) / beam.ey[i] HMCC comment
+                #beam.alphax[i] = -dist_mean_g * mean(dist_x * dist_px) / beam.ex[i] #HMCC comment
+                #beam.alphay[i] = -dist_mean_g * mean(dist_y * dist_py) / beam.ey[i] #HMCC comment
 
             else: 
                 beam.g0[i] = mean(dist_g)

@@ -213,13 +213,17 @@ class FEL_simulation_block(object):
         A_params = ['rxbeam', 'rybeam','alphax','alphay','emitx','emity']
         inp0 = inp
         os.system('cp /scratch2b/qfi29231/betamatch_dir/betamatch %s' %(f_path+'/betamatch'))
-        os.chdir(f_path)
+        os.chdir(f_path) 
+        if inp0.edist != None:
+            write_edist_file(inp0.edist,f_path+'run.0.edist')
+            inp0.edistfile = 'run.0.edist'
         with open(f_path+'/mod_file.in','w') as f:
             f.write(inp0.input())
         f.close()
         with open(f_path+'/beta_input_file.in','w') as f:
             f.write('mod_file.in')
         f.close()
+       
         if inp.latticefile != None or inp0.lat != None:
             with open(f_path+'/'+inp0.latticefile,'w') as f:
                 f.write(generate_lattice(inp0.lat,unit=inp0.xlamd*inp0.delz,energy=inp0.gamma0*m_e_GeV))   
@@ -241,6 +245,8 @@ class FEL_simulation_block(object):
         os.remove(f_path+'/beta_input_file.in')
         os.remove(f_path+'/TEMPLATE.IN')
         os.remove(f_path+'/mod_file.in')
+        os.remove(f_path+'/run.0.edist')
+        setattr(inp0,'edistfile',None)
         setattr(self,'gen_file',file_or)
         return inp0
         
@@ -551,7 +557,7 @@ class FEL_simulation_block(object):
         if getattr(inp,'edist')!=None:
             plot_edist(getattr(inp,'edist'),figsize=20,savefig=True,showfig=False,plot_x_y=True,plot_xy_s=False) 
             plot_edist(getattr(inp,'edist'),figsize=20,savefig=True,showfig=False,plot_x_y=False,plot_xy_s=True)
-            bfd_b = edist2beam(getattr(inp,'edist'),step=float(80.0*getattr(inp,'xlamds')))
+            bfd_b = edist2beam(getattr(inp,'edist'),step=float(1.0*getattr(inp,'xlamds')))
             setattr(bfd_b,'filePath',self.file_pout+'slice_edist')
             plot_beam(bfd_b,savefig=True,showfig=False)
         elif getattr(inp,'beam')!=None and hasattr(inp.edist,'I') and hasattr(inp.beam,'eloss'):

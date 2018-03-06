@@ -511,21 +511,21 @@ class Moga():
         #HMCC###  
         with open(self.save_file,'w') as f:
             for ind in result_nd:
-                #if len(ind.fitness.values)>1:
-                #    if ind.fitness.values[1]<=7e-7 and ind.fitness.values[2]<=7e-7 and ind.fitness.values[3]<=0.2 and ind.fitness.values[0]>=2.5e-3 and ind.fitness.values[0]<0.01:
-                for i_n,n_n in enumerate(ind):
-                    if i_n < len(ind)-1:
-                        f.write('{}\t'.format(n_n))
-                    else:
-                        f.write('{}\n'.format(n_n))
+                if len(ind.fitness.values)>1:
+                    #if ind.fitness.values[1]<=1e-6 and ind.fitness.values[2]<=1e-6 and ind.fitness.values[3]<=0.5:
+                    for i_n,n_n in enumerate(ind):
+                        if i_n < len(ind)-1:
+                            f.write('{}\t'.format(n_n))
+                        else:
+                            f.write('{}\n'.format(n_n))
                     #else:
-                    #    continue
-                #else:
-                #    for i_n,n_n in enumerate(ind):
-                #        if i_n < len(ind)-1:
-                #            f.write('{}\t'.format(n_n))
-                #        else:
-                #            f.write('{}\n'.format(n_n))
+                            #continue
+                else:
+                    for i_n,n_n in enumerate(ind):
+                        if i_n < len(ind)-1:
+                            f.write('{}\t'.format(n_n))
+                        else:
+                            f.write('{}\n'.format(n_n))
         #HMCC
         return result_nd
 

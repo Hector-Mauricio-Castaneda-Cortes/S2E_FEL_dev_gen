@@ -217,7 +217,8 @@ class MingXie(object):
         curp = beam_p.I[sl]
         t_pulse = np.amax(beam_p.z)-np.amin(beam_p.z)
         #return np.floor(getattr(self,'npartmax')*getattr(self,'binwidth')/(t_pulse))
-        return np.floor(curp*(beam_p.z[sl]/speed_of_light)/q_e)
+        #return np.floor(curp*(beam_p.z[sl] /speed_of_light)/q_e)
+        return np.floor(curp*self.binwidth/(speed_of_light*q_e))
 
     def slice_eta(self, sl):
         beam_p = getattr(self, 'beam')
@@ -324,7 +325,6 @@ class MingXie(object):
         for ticks in ax_mxie[1,0].yaxis.get_major_ticks():
             ticks.label.set_fontsize(8) 
         ax_mxie[1,0].yaxis.offsetText.set_fontsize(8)
-        
         ax_mxie[1,1].plot(1e6*np.array(beam_z.z),self.npart,'--',color='navy')
         ax_mxie[1,1].scatter(1e6*np.array(beam_z.z),self.npart,color='navy')
         ax_mxie[1,1].tick_params('N', color='navy')
