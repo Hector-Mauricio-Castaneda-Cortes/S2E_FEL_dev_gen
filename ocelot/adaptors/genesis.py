@@ -2471,7 +2471,8 @@ def edist2beam(edist, step=1e-7,i_aft=0):#HMCC afterburner flag
                  'npart' #HMCC
                  ]
     else:
-        array = ['z',
+        array = ['I',
+                 'z',
                  'g0',
                  'dg',
                  'npart' #HMCC
@@ -2507,12 +2508,13 @@ def edist2beam(edist, step=1e-7,i_aft=0):#HMCC afterburner flag
             dist_y = edist.y[indices]
             dist_px = edist.xp[indices]
             dist_py = edist.yp[indices]
-            dist_mean_g = mean(dist_g)
+            dist_mean_g = mean(dist_g) 
+            beam.I[i] = sum(indices) * part_c / t_step 
+            beam.g0[i] = np.mean(dist_g)
+            beam.dg[i] = np.std(dist_g)
            
             ### HMCC ###
             if i_aft ==0: #HMCC 
-                beam.npart[i]= len(dist_x) #HMCC particles per slice
-                beam.I[i] = sum(indices) * part_c / t_step
                 beam.g0[i] = np.mean(dist_g)
                 beam.dg[i] = np.std(dist_g)
                 beam.x[i] = np.mean(dist_x)
@@ -2529,12 +2531,14 @@ def edist2beam(edist, step=1e-7,i_aft=0):#HMCC afterburner flag
                     dyp = dyp + ((dist_y[i_x]-beam.y[i])*(dist_py[i_x]-beam.py[i]))
                 
                 N_p = len(dist_x)
+               
                 dxx = float(dxx/N_p)
                 dyy = float(dyy/N_p) 
                 dpxpx = float(dpxpx/N_p) 
                 dpypy = float(dpypy/N_p)
                 dxp= float(dxp/N_p)
                 dyp = float(dyp/N_p)
+                beam.npart[i]= N_p  #HMCC particles per slice
                 beam.ex[i]= beam.g0[i] *np.sqrt((dxx*dpxpx)-np.square(dxp))
                 beam.ey[i]= beam.g0[i] *np.sqrt((dyy*dpypy)-np.square(dyp)) 
                 beam.betax[i] = dist_mean_g * mean(dxx) / beam.ex[i] 
@@ -2553,17 +2557,15 @@ def edist2beam(edist, step=1e-7,i_aft=0):#HMCC afterburner flag
                 #beam.alphay[i] = -dist_mean_g * mean(dist_y * dist_py) / beam.ey[i] #HMCC comment
 
             else: 
-                beam.g0[i] = mean(dist_g)
-                beam.dg[i] = np.std(dist_g)
-            ## HMCC ##
-                
-
+                continue
+            ## HMCC ##   
     if i_aft==0:
         idx = np.where(np.logical_or.reduce((beam.I == 0, beam.g0 == 0, beam.betax > mean(beam.betax) * 10, beam.betay > mean(beam.betay) * 10)))
         del beam[idx]
+       
     else:
         for i_g0,g0 in enumerate(beam.g0):
-            if g0 ==0:
+            if g0 ==0 or beam.I[i_g0]==0:
                 del beam[i_g0]
             else:
                 continue
@@ -2589,9 +2591,9 @@ def edist2beam(edist, step=1e-7,i_aft=0):#HMCC afterburner flag
         beam.columns = ['ZPOS', 'GAMMA0', 'DELGAM', 'EMITX', 'EMITY', 'BETAX', 'BETAY', 'XBEAM', 'YBEAM', 'PXBEAM', 'PYBEAM', 'ALPHAX', 'ALPHAY', 'CURPEAK', 'ELOSS'] 
         beam.idx_max = np.argmax(beam.I)
     else:
-        beam.columns = ['ZPOS', 'GAMMA0', 'DELGAM'] 
+        beam.columns = ['ZPOS', 'GAMMA0', 'DELGAM','CURPEAK'] 
     ###HMCC
-    #beam.idx_max = np.argmax(beam.I) #HMCC
+    beam.idx_max = np.argmax(beam.I)
     beam.eloss = np.zeros_like(beam.z)
     # beam.fileName=edist.fileName+'.beam'
     beam.filePath = edist.filePath + '.beam'
@@ -2722,7 +2724,8 @@ def beam_file_str(beam,i_aft=0):#HMCC
                  ['eloss', 'ELOSS'],
                  ]
     else: 
-        array=[['z', 'ZPOS'],
+        array=[['z', 'ZPOS'], 
+               ['I', 'CURPEAK'],
                ['g0', 'GAMMA0'],
                ['dg', 'DELGAM']
                ]
@@ -3212,7 +3215,7 @@ def generate_lattice(lattice, unit=1.0, energy=None, debug=False, min_phsh = Fal
         if el.__class__ !=Undulator:#HMCC
             sum_prev = sum_prev+el.l#HMCC
         else:# HMCC
-            break #HMCC
+            break  
 
     for e in lattice.sequence:
 
@@ -3223,7 +3226,7 @@ def generate_lattice(lattice, unit=1.0, energy=None, debug=False, min_phsh = Fal
 
             l = float(e.nperiods) * float(e.lperiod)
 
-            undLat += 'AW' + '    ' + str(e.Kx * np.sqrt(0.5)) + '   ' + str(round(l / unit, 2)) + '  ' + str(round((pos - prevPos - prevLen) / unit, 2)) + '\n'
+            undLat += 'AW' + '    ' + str(e.Kx * np.sqrt(0.5)) + '   ' + str(np.rint(l / unit)) + '  ' + str(round((pos - prevPos - prevLen) / unit, 2)) + '\n'
 
             if debug:
                 print ('added und ' + 'pos=' + str(pos) + ' prevPos=' + str(prevPos) + ' prevLen=' + str(prevLen))
@@ -3241,13 +3244,12 @@ def generate_lattice(lattice, unit=1.0, energy=None, debug=False, min_phsh = Fal
                     add_slip = xlamds - slip % xlamds #free-space slippage to compensate with undulator K to bring it to integer number of wavelengths
                     K_rms_add = sqrt(2 * add_slip * gamma**2 / L) #compensational K
                     # driftLat += 'AD' + '    ' + str(e.Kx * np.sqrt(0.5)) + '   ' + str(round((pos - prevPos - prevLen) / unit, 2)) + '  ' + str(round(prevLen / unit, 2)) + '\n'
-                    driftLat += 'AD' + '    ' + str(K_rms_add) + '   ' + str(round((L) / unit, 2)) + '  ' + str(round(prevLen / unit, 2)) + '\n'
+                    driftLat += 'AD' + '    ' + str(K_rms_add) + '   ' + str(np.rint(L/unit)) + '  ' + str(round(prevLen / unit, 2)) + '\n'
                 else:
-                    driftLat += 'AD' + '    ' + str(K_rms) + '   ' + str(round((L) / unit, 2)) + '  ' + str(round(prevLen / unit, 2)) + '\n'
+                    driftLat += 'AD' + '    ' + str(K_rms) + '   ' + str(np.rint(L/unit)) + '  ' + str(round(prevLen / unit, 2)) + '\n' #HMCC
             else:#HMCC in case the first element is not an undulator.
                 K_rms = e.Kx * np.sqrt(0.5) #HMCC
-                driftLat += 'AD' + '    ' + str(K_rms) + '   ' + str(round((2*sum_prev) / unit, 2)) + '  ' + str(round((l+sum_prev) / unit, 2)) + '\n'#HMCC
-
+                driftLat += 'AD' + '    ' + str(K_rms) + '   ' + str(np.rint((2.0*sum_prev+unit) / unit)) + '  ' + str(round((l+sum_prev) / unit, 2)) + '\n'#HMCC
 
             prevPos = pos
             prevLen = l
