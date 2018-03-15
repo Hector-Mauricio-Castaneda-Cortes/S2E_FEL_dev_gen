@@ -172,7 +172,7 @@ class FEL_simulation_block(object):
         qd = Quadrupole(l=dl*und.lperiod,k1=0.3*quadd/p_beam)
         qdh=deepcopy(qf)
         qdh.l/=2
-       
+        
        # Creating the cell
      
         extra_fodo = (und,d_rift,qdh)
@@ -181,7 +181,7 @@ class FEL_simulation_block(object):
         if f1st ==1:
             sase3= MagneticLattice((qdh,d_rift,)+(np.ceil(nsec/2)*cell_ps)) # Lattice with nsec modules
         elif f1st ==0 and nsec >1:
-            sase3=  MagneticLattice(np.ceil(nsec/2)*cell_ps) # Lattice with nsec modules
+            sase3=  MagneticLattice(np.rint(nsec/2)*cell_ps) # Lattice with nsec modules
         elif f1st ==0 and nsec ==1:
             sase3=  MagneticLattice(cell_ps) # Lattice with nsec modules
         up = UndulatorParameters(und,E_beam) # Instance of the Class UndulatorParameters
@@ -555,8 +555,8 @@ class FEL_simulation_block(object):
         plt.rcParams['text.latex.unicode']=False
         #Plot distribution
         if getattr(inp,'edist')!=None:
-            plot_edist(getattr(inp,'edist'),figsize=20,savefig=True,showfig=False,plot_x_y=True,plot_xy_s=False) 
-            plot_edist(getattr(inp,'edist'),figsize=20,savefig=True,showfig=False,plot_x_y=False,plot_xy_s=True)
+            plot_edist(getattr(inp,'edist'),figsize=20,savefig=True,showfig=False,plot_x_y=True,plot_xy_s=False,bins=(250,250,250,250)) 
+            plot_edist(getattr(inp,'edist'),figsize=20,savefig=True,showfig=False,plot_x_y=False,plot_xy_s=True,bins=(250,250,250,250))
             bfd_b = edist2beam(getattr(inp,'edist'),step=float(1.0*getattr(inp,'xlamds')))
             setattr(bfd_b,'filePath',self.file_pout+'slice_edist')
             plot_beam(bfd_b,savefig=True,showfig=False)
@@ -692,7 +692,7 @@ class FEL_simulation_block(object):
             else:
                 setattr(inp,'nslice',getattr(A_input,'nslice'))
 
-        if (getattr(self,'i_edist')==1):
+        if (getattr(self,'i_edist')==1) or (getattr(inp,'edist')!=None) or  (getattr(inp,'beam')!=None) :
             setattr(inp,'ntail',0)
         else:
             if (getattr(self,'i_edist')==0) and getattr(A_input,'ntail')!=0 :

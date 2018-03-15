@@ -2508,13 +2508,12 @@ def edist2beam(edist, step=1e-7,i_aft=0):#HMCC afterburner flag
             dist_y = edist.y[indices]
             dist_px = edist.xp[indices]
             dist_py = edist.yp[indices]
-            dist_mean_g = mean(dist_g) 
+            dist_mean_g = mean(dist_g)  
             beam.I[i] = sum(indices) * part_c / t_step 
-            beam.g0[i] = np.mean(dist_g)
-            beam.dg[i] = np.std(dist_g)
+           
            
             ### HMCC ###
-            if i_aft ==0: #HMCC 
+            if i_aft ==0: #HMCC
                 beam.g0[i] = np.mean(dist_g)
                 beam.dg[i] = np.std(dist_g)
                 beam.x[i] = np.mean(dist_x)
@@ -2556,14 +2555,17 @@ def edist2beam(edist, step=1e-7,i_aft=0):#HMCC afterburner flag
                 #beam.alphax[i] = -dist_mean_g * mean(dist_x * dist_px) / beam.ex[i] #HMCC comment
                 #beam.alphay[i] = -dist_mean_g * mean(dist_y * dist_py) / beam.ey[i] #HMCC comment
 
-            else: 
-                continue
+            else:
+                beam.g0[i] = np.mean(dist_g)
+                beam.dg[i] = np.std(dist_g) 
             ## HMCC ##   
     if i_aft==0:
         idx = np.where(np.logical_or.reduce((beam.I == 0, beam.g0 == 0, beam.betax > mean(beam.betax) * 10, beam.betay > mean(beam.betay) * 10)))
         del beam[idx]
        
-    else:
+    else: 
+        #idx = np.where(np.logical_or.reduce((beam.I == 0, beam.g0 == 0)))
+        #del beam[idx]
         for i_g0,g0 in enumerate(beam.g0):
             if g0 ==0 or beam.I[i_g0]==0:
                 del beam[i_g0]
@@ -2589,7 +2591,6 @@ def edist2beam(edist, step=1e-7,i_aft=0):#HMCC afterburner flag
     ###HMCC
     if i_aft ==0:
         beam.columns = ['ZPOS', 'GAMMA0', 'DELGAM', 'EMITX', 'EMITY', 'BETAX', 'BETAY', 'XBEAM', 'YBEAM', 'PXBEAM', 'PYBEAM', 'ALPHAX', 'ALPHAY', 'CURPEAK', 'ELOSS'] 
-        beam.idx_max = np.argmax(beam.I)
     else:
         beam.columns = ['ZPOS', 'GAMMA0', 'DELGAM','CURPEAK'] 
     ###HMCC
@@ -2725,7 +2726,7 @@ def beam_file_str(beam,i_aft=0):#HMCC
                  ]
     else: 
         array=[['z', 'ZPOS'], 
-               ['I', 'CURPEAK'],
+               ['I', 'CURPEAK'], 
                ['g0', 'GAMMA0'],
                ['dg', 'DELGAM']
                ]
