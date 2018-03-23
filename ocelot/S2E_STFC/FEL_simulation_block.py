@@ -8,6 +8,7 @@ HMCC: 12-07-17: Fixing bugs reading from input file, adding support to read beam
 HMCC: 21-07-17: Fixing bug related to centering when an ASTRA file is read. Fixing quad scan bug. Add slice plot when
                 a distribution is given (via ASTRA or existent dist file)
 HMCC: 29-01-17: Fixing bugs in the reading routine in order to run the S2E for the afterburner scheme
+HMCC: 23-03-17: Fixing a bug when there are several noise realisations in order to avoid having the same seed
 '''
 #################################################
 ### import of all modules that are required.
@@ -25,7 +26,7 @@ from ocelot.gui.genesis_plot import plot_gen_out_all,plot_gen_stat
 import ocelot.cpbd.elements
 import numpy as np
 import matplotlib.pyplot as plt
-import os,sys, errno
+import os,sys, errno, shutil
 import time
     
 
@@ -557,7 +558,7 @@ class FEL_simulation_block(object):
         if getattr(inp,'edist')!=None:
             plot_edist(getattr(inp,'edist'),figsize=20,savefig=True,showfig=False,plot_x_y=True,plot_xy_s=False,bins=(250,250,250,250)) 
             plot_edist(getattr(inp,'edist'),figsize=20,savefig=True,showfig=False,plot_x_y=False,plot_xy_s=True,bins=(250,250,250,250))
-            bfd_b = edist2beam(getattr(inp,'edist'),step=float(1.0*getattr(inp,'xlamds')))
+            bfd_b = edist2beam(getattr(inp,'edist'),step=float(10.0*getattr(inp,'xlamds')))
             setattr(bfd_b,'filePath',self.file_pout+'slice_edist')
             plot_beam(bfd_b,savefig=True,showfig=False)
         elif getattr(inp,'beam')!=None and hasattr(inp.edist,'I') and hasattr(inp.beam,'eloss'):
@@ -709,13 +710,24 @@ class FEL_simulation_block(object):
         for n_par in s_scan:
             for run_id in run_ids:           
                 inp.runid = run_id
+                inp.lout =  [1,1,1,1,1,0,1,1,1,1,1,0,0,1,0,0,0,0,0]
                 if ((self.stat_run==1) or (self.i_scan==1)):
                     setattr(inp,'ipseed',-1)
                 else:
-                    setattr(inp,'ipseed', np.random.randint(9999))
+                    ipseed = np.random.randint(9999)
+                    setattr(inp,'ipseed', ipseed)
                 inp.run_dir = getattr(self,'file_pout')+'scan_'+str(n_par)+'/ip_seed_'+str(inp.ipseed)+'/' 
+                
                 try:
                     os.makedirs(inp.run_dir)
+                    if self.stat_run>1:
+                        while ipseed in  [int(files[8:]) for files in os.listdir(getattr(self,'file_pout')+'scan_'+str(n_par)) if os.path.isdir(getattr(self,'file_pout')+'scan_'+str(n_par)+'/'+files)]:
+                            ipseed = np.random.randint(9999)
+                            shutil.rmtree(inp.run_dir)
+                        else:
+                            setattr(inp,'ipseed',ipseed)
+                            inp.run_dir = getattr(self,'file_pout')+'scan_'+str(n_par)+'/ip_seed_'+str(inp.ipseed)+'/'
+                            os.makedirs(inp.run_dir)
                 except OSError as exc:
                     if (exc.errno == errno.EEXIST) and os.path.isdir(self.file_pout+'scan'+str(n_par)+'/run_'+str(run_id)):
                         pass

@@ -14,7 +14,9 @@ energy calculated via Ming Xie. Otherwise, a plot is generated showing the satur
 pulse energy as a function of z, rho parameter a function of s and the number of particles per slice.
 
 HMCC: 22-01-18 Implementation of the Ming-Xie class
-
+HMCC: 05-03-18: Bug fixing of particles per slice plot
+HMCC: 16-03-18: Implementation of the correction of the Ming Xie scaling due to bunch length (S. Bajlekov, Ph.D. thesis, 
+                University of Oxford (2011) and Seggebrock,T, et.al. Phys. Rev. ST Accel. Beams 16, 070703 (2013). 
 '''
 
 class MingXie(object):
@@ -31,6 +33,7 @@ class MingXie(object):
         self.__constants = {'a1': 0.45, 'a2': 0.57, 'a3': 0.55, 'a4': 1.6, 'a5': 3, 'a6': 2,
                           'a7': 0.35, 'a8': 2.9, 'a9': 2.4, 'a10': 51, 'a11': 0.95, 'a12': 3,
                           'a13': 5.4, 'a14': 0.7, 'a15': 1.9, 'a16': 1140, 'a17': 2.2, 'a18': 2.9, 'a19': 3.2}
+        self.__consteta = {'b1':16.7512,'b2':-3.0430,'b3':0.3267}
         self.__curra = 17.045e3
         self.__nwig = 0
         self.__nsec = 0
@@ -54,6 +57,11 @@ class MingXie(object):
         return {'a1': 0.45, 'a2': 0.57, 'a3': 0.55, 'a4': 1.6, 'a5': 3, 'a6': 2,
                 'a7': 0.35, 'a8': 2.9, 'a9': 2.4, 'a10': 51, 'a11': 0.95, 'a12': 3,
                 'a13': 5.4, 'a14': 0.7, 'a15': 1.9, 'a16': 1140, 'a17': 2.2, 'a18': 2.9, 'a19': 3.2}
+    
+    @property
+    def consteta(self):
+        return {'b1':16.7512,'b2':-3.0430,'b3':0.3267}
+        
     @property
     def lsat(self):
         return self.__lsat 
@@ -244,12 +252,22 @@ class MingXie(object):
             (a_cof['a16'] * (n_d**a_cof['a17']) * (n_e**a_cof['a18']) *(ngam**a_cof['a19']))
         return eta
 
+    def slice_eta_z(self,sl):
+        beam_p=getattr(self,'beam')
+        b_cof = getattr(self,'consteta')
+        l_c = getattr(self,'wavelength')/(4.0*np.pi*np.sqrt(3.0)*self.slice_rho(sl))
+        #t_pulse = np.mean(np.square(beam_p.z[:sl]))
+        t_pulse = beam_p.z[sl]-np.amin(beam_p.z)
+        eta_z= b_cof['b1']*np.exp(b_cof['b2']*(np.power(t_pulse,b_cof['b3'])/np.power(l_c,b_cof['b3'])))
+        return eta_z
+    
     def slice_p_sat(self, sl):
         beam_p = getattr(self, 'beam')
         curpeak = beam_p.I[sl]
         gamma = beam_p.g0[sl]
         eta =  self.slice_eta(sl)
-        return 1.6e6 * self.slice_rho(sl) * (np.square(1.0 / (1.0 + eta))) * curpeak * (gamma * m_e_MeV)
+        eta_z = self.slice_eta_z(sl)
+        return 1.6e6 * self.slice_rho(sl) * (np.square(1.0 / ((1.0+eta_z)*(1.0 + eta)))) * curpeak * (gamma * m_e_MeV)
 
     def slice_p_noise(self, sl):
         beam_p = self.beam
@@ -258,8 +276,9 @@ class MingXie(object):
         return float(1.0e6*speed_of_light * m_e_MeV * q_e * gamma * np.square(self.slice_rho(sl)) / lbd)
 
     def slice_gain_length(self, sl):
-        lbd_u = float(getattr(self, 'lambdu'))
-        return float((1.0 + self.slice_eta(sl)) * lbd_u / (4.0 * np.pi * np.sqrt(3.0) * self.slice_rho(sl)))
+        lbd_u = float(getattr(self, 'lambdu')) 
+        eta_z = self.slice_eta_z(sl)
+        return float((1.0+eta_z) * (1.0 + self.slice_eta(sl)) * lbd_u / (4.0 * np.pi * np.sqrt(3.0) * self.slice_rho(sl)))
 
     def slice_sat_length(self, sl):
         return self.slice_gain_length(sl) * np.log(9.0 * self.slice_p_sat(sl) / self.slice_p_noise(sl))
