@@ -321,17 +321,6 @@ class Moga():
             if inf_val_checker == 1:
                 g_inds.append(toolbox.clone(i)) 
                 gb[0] += 1                      
-               ################ HMCC  adding the physics restrictions ######################################
-                #if (len(i.fitness.values)>1):
-                #    if i.fitness.values[1]<=7e-7 and i.fitness.values[2]<=7e-7 and i.fitness.values[3]<=0.2 and i.fitness.values[0]>=2.5e-3 and  i.fitness.values[0]<0.01:
-                #        g_inds.append(toolbox.clone(i))
-                #        gb[0] += 1
-                #    else:
-                #        gb[1]+= 1
-                #else: 
-                #    g_inds.append(toolbox.clone(i)) 
-                #    gb[0] += 1 
-                #######################################################################
             else:
                 gb[1] += 1
 
@@ -372,13 +361,7 @@ class Moga():
             for j in range(self.problem_size):
                 if ind.fitness.values[j] < best_ind[j].fitness.values[j]:
                     best_ind[j] = ind
-                    ##################################################
-                     #HMCC adding the physics restrictions 
-                    #if len(ind.fitness.values)>1:
-                    #    if ind.fitness.values[1]<=5.9e-7 and ind.fitness.values[2]<=5.9e-7 and ind.fitness.values[3]<=2e-1i.fitness.values[0]>=2.5e-3 and  i.fitness.values[0]<0.01:
-                    #        best_ind[j] = ind
-                        
-                     ################################
+        
         #best_ind = [pop[0], pop[0]]
         #for ind in pop:
         #    if ind.fitness.values[0] < best_ind[0].fitness.values[0]:
@@ -512,14 +495,11 @@ class Moga():
         with open(self.save_file,'w') as f:
             for ind in result_nd:
                 if len(ind.fitness.values)>1:
-                    #if ind.fitness.values[1]<=1e-6 and ind.fitness.values[2]<=1e-6 and ind.fitness.values[3]<=0.5:
                     for i_n,n_n in enumerate(ind):
                         if i_n < len(ind)-1:
                             f.write('{}\t'.format(n_n))
                         else:
                             f.write('{}\n'.format(n_n))
-                    #else:
-                            #continue
                 else:
                     for i_n,n_n in enumerate(ind):
                         if i_n < len(ind)-1:

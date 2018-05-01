@@ -9,6 +9,7 @@ HMCC: 21-07-17: Fixing bug related to centering when an ASTRA file is read. Fixi
                 a distribution is given (via ASTRA or existent dist file)
 HMCC: 29-01-17: Fixing bugs in the reading routine in order to run the S2E for the afterburner scheme
 HMCC: 23-03-17: Fixing a bug when there are several noise realisations in order to avoid having the same seed
+HMCC: 27-04-18: Run the simulation block if there is an external lattice file present 
 '''
 #################################################
 ### import of all modules that are required.
@@ -104,7 +105,7 @@ class FEL_simulation_block(object):
                           or str(splitLine[0]).startswith('lbc') or str(splitLine[0]).startswith('magin') or str(splitLine[0]).startswith('magout')   
                           or str(splitLine[0]).startswith('ffspec') or str(splitLine[0]).startswith('convharm') or str(splitLine[0]).startswith('ippart')
                           or str(splitLine[0]).startswith('ispart') or str(splitLine[0]).startswith('ipradi') or str(splitLine[0]).startswith('isradi')
-                          or str(splitLine[0])=='alignradf'
+                          or str(splitLine[0])=='alignradf' or  str(splitLine[0])=='fbess0'
                           or str(splitLine[0]).startswith('multconv') or str(splitLine[0])=='offsetradf'):
                         val_attr = int(float(splitLine[-1].replace('=',"")))
                     elif (str(splitLine[0]).startswith('ibfield')) or (str(splitLine[0]).startswith('imagl')) :
@@ -122,12 +123,16 @@ class FEL_simulation_block(object):
                     elif(splitLine[0].startswith('alpha')):
                         val_attr = float(splitLine[-1].replace('=',""))
                     elif((splitLine[0].startswith('magin')) and (splitLine[0].endswith('file'))):
-                        val_attr = str(splitLine[-1].replace('=',""))
+                        val_attr = str(splitLine[-1].replace('=',"").replace(' ',"").replace("'","").replace("'",""))
                     elif (splitLine[0].startswith('partfile')) or ((splitLine[0].startswith('fieldfile'))):
                         continue
                     else:
                         val_attr = float(splitLine[-1].replace('=',""))        
-                    setattr(A_input,str(splitLine[0]),val_attr)                
+                    setattr(A_input,str(splitLine[0]),val_attr)   
+                    if A_input.magin ==1 and hasattr(A_input,'maginfile'):
+                        vfile = str(A_input.maginfile).replace(' ',"").replace("'","")
+                        setattr(A_input,'latticefile',vfile)
+                        
         f.close()
         return A_input
         
@@ -246,8 +251,9 @@ class FEL_simulation_block(object):
         os.remove(f_path+'/beta_input_file.in')
         os.remove(f_path+'/TEMPLATE.IN')
         os.remove(f_path+'/mod_file.in')
-        os.remove(f_path+'/run.0.edist')
-        setattr(inp0,'edistfile',None)
+        if os.path.isfile(f_path+'run.0.edist'):
+            os.remove(f_path+'run.0.edist')
+            setattr(inp0,'edistfile',None)
         setattr(self,'gen_file',file_or)
         return inp0
         
@@ -632,15 +638,22 @@ class FEL_simulation_block(object):
          
             # Generate input object
         inp = generate_input(A_undulator['Undulator Parameters'],A_beam,itdp=i_tdp)
-        
-        # Overwrite the simulation attributes of the input object with the ones defined in the input file
         for key in A_input.__dict__:
             if (key in A_simul) or (key in A_und) or (key in A_td) or (key =='xlamds') or (key == 'f1st') or (key == 'nslice') or (key == 'ntail'):
                 setattr(inp,key, getattr(A_input,key))
+        
+        # Overwrite the simulation attributes of the input object with the ones defined in the input file
+           
+        if A_input.latticefile != None and A_input.magin ==1:
+            inp.magin = 1
+            inp.latticefile = A_input.latticefile
+        else:
+            pass 
+       
         for key in ['edist','beam','dfl']:
             if getattr(A_input,key)!=None:
                 setattr(inp,key,getattr(A_input,key))
-        
+
         # Set up some input parameters
         if getattr(inp,'itdp')==0:
             setattr(inp,'type','steady')
@@ -732,13 +745,15 @@ class FEL_simulation_block(object):
                     if (exc.errno == errno.EEXIST) and os.path.isdir(self.file_pout+'scan'+str(n_par)+'/run_'+str(run_id)):
                         pass
                     else: 
-                        raise                                  
-                if self.i_scan==1 and inp.f1st==1: 
+                        raise 
+                if A_input.latticefile != None and A_input.magin ==1:
+                    shutil.copyfile(os.path.dirname(self.gen_file)+'/'+inp.latticefile,inp.run_dir+inp.latticefile)                                 
+                if self.i_scan==1 and inp.f1st==1 and (inp.latticefile==None): 
                     inp= self.GEN_scan(n_par ,A_input,A_undulator,inp)                      
-                elif self.i_scan==0 and inp.f1st==1:
+                elif self.i_scan==0 and inp.f1st==1 and inp.latticefile == None:
                     inp.lat = A_undulator['Magnetic Lattice']
                     setattr(inp,'magin',1)
-                else:
+                elif (self.i_scan==0 and inp.f1st==0) and inp.latticefile == None:
                     inp.lat =None
                     setattr(inp,'magin',0)
                 inp_arr.append(inp)                   

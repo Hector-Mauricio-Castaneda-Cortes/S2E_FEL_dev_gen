@@ -2499,7 +2499,8 @@ def edist2beam(edist, step=1e-7,i_aft=0):#HMCC afterburner flag
 
     for i in range(npoints - 1):
         indices = (edist.t > t_min + t_step * i) * (edist.t < t_min + t_step * (i + 1))
-        beam.z[i] = (t_min + t_step * (i + 0.5)) * speed_of_light
+        #beam.z[i] = (t_min + t_step * (i + 0.5)) * speed_of_light # HMCC comment
+        beam.z[i] = -(t_min + t_step * (i + 0.5)) * speed_of_light  #HMCC invert
         dist_mean_g = beam.g0[i]
 
         if sum(indices) > 2:
@@ -2559,6 +2560,7 @@ def edist2beam(edist, step=1e-7,i_aft=0):#HMCC afterburner flag
                 beam.g0[i] = np.mean(dist_g)
                 beam.dg[i] = np.std(dist_g) 
             ## HMCC ##   
+    beam.z=beam.z[:]-np.amin(beam.z)
     if i_aft==0:
         idx = np.where(np.logical_or.reduce((beam.I == 0, beam.g0 == 0, beam.betax > mean(beam.betax) * 10, beam.betay > mean(beam.betay) * 10)))
         del beam[idx]
