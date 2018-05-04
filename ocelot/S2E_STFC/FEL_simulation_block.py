@@ -105,8 +105,10 @@ class FEL_simulation_block(object):
                           or str(splitLine[0]).startswith('lbc') or str(splitLine[0]).startswith('magin') or str(splitLine[0]).startswith('magout')   
                           or str(splitLine[0]).startswith('ffspec') or str(splitLine[0]).startswith('convharm') or str(splitLine[0]).startswith('ippart')
                           or str(splitLine[0]).startswith('ispart') or str(splitLine[0]).startswith('ipradi') or str(splitLine[0]).startswith('isradi')
-                          or str(splitLine[0])=='alignradf' or str(splitLine[0])=='fbess0'
+                          or str(splitLine[0])=='alignradf'
                           or str(splitLine[0]).startswith('multconv') or str(splitLine[0])=='offsetradf'):
+                        val_attr = int(float(splitLine[-1].replace('=',"")))
+                    elif (str(splitLine[0]).startswith('fbess')):
                         val_attr = int(float(splitLine[-1].replace('=',"")))
                     elif (str(splitLine[0]).startswith('ibfield')) or (str(splitLine[0]).startswith('imagl')) :
                         val_attr = float(splitLine[-1].replace('=',""))
@@ -746,10 +748,13 @@ class FEL_simulation_block(object):
                                   
                 if self.i_scan==1 and inp.f1st==1 and A_input.latticefile ==None:
                     inp= self.GEN_scan(n_par ,A_input,A_undulator,inp)                      
-                elif self.i_scan==0 and inp.f1st==1:
+                elif self.i_scan==0 and inp.f1st==1 and A_input.latticefile ==None:
                     inp.lat = A_undulator['Magnetic Lattice']
                     setattr(inp,'magin',1)
-                else:
+                elif A_input.latticefile !=None:
+                    setattr(inp,'magin',1)
+                    setattr(inp,'latticefile',getattr(A_input,'latticefile'))
+                elif self.i_scan!=0 and inp.f1st ==0 and A_input.latticefile ==None:
                     inp.lat =None
                     setattr(inp,'magin',0)
                 inp_arr.append(inp)                   

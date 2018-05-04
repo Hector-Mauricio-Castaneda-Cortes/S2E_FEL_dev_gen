@@ -16,7 +16,7 @@ pulse energy as a function of z, rho parameter a function of s and the number of
 HMCC: 22-01-18 Implementation of the Ming-Xie class
 HMCC: 05-03-18: Bug fixing of particles per slice plot
 HMCC: 16-03-18: Implementation of the correction of the Ming Xie scaling due to bunch length (S. Bajlekov, Ph.D. thesis, 
-                University of Oxford (2011) and Seggebrock,T, et.al. Phys. Rev. ST Accel. Beams 16, 070703 (2013). 
+                University of Oxford (2011) and Seggebrock,T, et.al. Phys. Rev. ST Accel. Beams 16, 070703 (2013).
 '''
 
 class MingXie(object):
