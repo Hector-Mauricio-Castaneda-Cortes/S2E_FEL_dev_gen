@@ -9,7 +9,9 @@ HMCC: 21-07-17: Fixing bug related to centering when an ASTRA file is read. Fixi
                 a distribution is given (via ASTRA or existent dist file)
 HMCC: 29-01-17: Fixing bugs in the reading routine in order to run the S2E for the afterburner scheme
 HMCC: 23-03-17: Fixing a bug when there are several noise realisations in order to avoid having the same seed
-HMCC: 27-04-18: Run the simulation block if there is an external lattice file present
+HMCC: 26-10-18: Workaround for beta scan (fixed for aw0)
+HMCC: 26-06-18: Add tapering (wcoefz) support
+HMCC: 26-10-18: Add support for fresh slice. 
 '''
 #################################################
 ### import of all modules that are required.
@@ -139,7 +141,7 @@ class FEL_simulation_block(object):
         f.close()
         return A_input
         
-    def undulator_design(self,A_contents):
+    def undulator_design(self,A_contents,i_fs=0):
         from ocelot.cpbd.elements import Drift, Quadrupole, Undulator
         from ocelot.cpbd.magnetic_lattice import MagneticLattice
         from ocelot.common.globals import m_e_GeV, speed_of_light, h_eV_s
@@ -179,13 +181,19 @@ class FEL_simulation_block(object):
      
         qf= Quadrupole(l=fl*und.lperiod,k1=0.3*quadf/p_beam)
         qd = Quadrupole(l=dl*und.lperiod,k1=0.3*quadd/p_beam)
-        qdh=deepcopy(qf)
+        if i_fs ==0:
+            qdh=deepcopy(qf)
+        else:
+            qdh=deepcopy(qd)
         qdh.l/=2
         
        # Creating the cell
      
         extra_fodo = (und,d_rift,qdh)
-        cell_ps = (und,d_rift, qd, d_rift2,und, d_rift,qf,d_rift2)
+        if i_fs ==0:
+            cell_ps = (und,d_rift, qd, d_rift2,und, d_rift,qf,d_rift2)
+        else:
+            cell_ps = (und,d_rift, qf, d_rift2,und, d_rift,qd,d_rift2) 
         l_fodo = MagneticLattice(cell_ps).totalLen/2 ##Length of fodo cell
         if f1st ==1:
             sase3= MagneticLattice((qdh,d_rift,)+(np.ceil(nsec/2)*cell_ps)) # Lattice with nsec modules
@@ -221,11 +229,8 @@ class FEL_simulation_block(object):
         file_or = getattr(self,'gen_file')
         A_params = ['rxbeam', 'rybeam','alphax','alphay','emitx','emity']
         inp0 = inp
-        os.system('cp /scratch2b/qfi29231/betamatch_dir/betamatch %s' %(f_path+'/betamatch'))
+        os.system('cp /scratch2b/qfi29231/betamatch_dir/betamatch %s' %(f_path))
         os.chdir(f_path) 
-        if inp0.edist != None:
-            write_edist_file(inp0.edist,f_path+'run.0.edist')
-            inp0.edistfile = 'run.0.edist'
         with open(f_path+'/mod_file.in','w') as f:
             f.write(inp0.input())
         f.close()
@@ -242,21 +247,23 @@ class FEL_simulation_block(object):
         except:
             print('Betamatch did not work')
             
-        setattr(self,'gen_file',f_path+'/TEMPLATE.IN')
+        setattr(self,'gen_file',f_path+'TEMPLATE.IN')
             
         inp2 = self.read_GEN_input_file()
         for params in A_params:
-            if getattr(inp0,params)==getattr(inp2,params):
+            if getattr(inp0,params)==getattr(inp2,params) and  (getattr(inp0,params)==getattr(inp0,params)):
                 print('Betamatch not change parameters')
-            else:
+            elif (getattr(inp0,params)==getattr(inp0,params)) and getattr(inp0,params)!=getattr(inp2,params) and getattr(inp0,params)!='nan':
                 print('Betamatch changed parameters')
                 setattr(inp0,params,getattr(inp2,params))
+            elif (getattr(inp0,params)!=getattr(inp0,params)):
+                print('Nan as a solution. Parameters of original input file')
+                for params2 in A_params:
+                    setattr(inp0, params, getattr(inp2, params))
+                break
         os.remove(f_path+'/beta_input_file.in')
         os.remove(f_path+'/TEMPLATE.IN')
         os.remove(f_path+'/mod_file.in')
-        if os.path.isfile(f_path+'run.0.edist'):
-            os.remove(f_path+'/run.0.edist')
-            setattr(inp0,'edistfile',None)
         setattr(self,'gen_file',file_or)
         return inp0
         
@@ -340,7 +347,7 @@ class FEL_simulation_block(object):
             inp.lat = A_und['Magnetic Lattice']
             setattr(inp,'magin',1)
             print(' ++++++++++ Scan {0} of the parameter {1}'.format(n_p, self.parameter))
-        elif ((self.parameter in A_undl) or (self.parameter == 'xlamds')): 
+        elif ((self.parameter in A_undl) or (self.parameter == 'xlamds') or self.parameter =='aw0'): 
             print(' ++++++++++ Steady State Scan {0} of the parameter {1} Quad optimisation'.format(n_p, self.parameter))
             setattr(inp,'type','steady')
             setattr(inp,'itdp',0)
@@ -349,8 +356,10 @@ class FEL_simulation_block(object):
             setattr(inp,'betamatch',True)
             if (self.parameter in A_undl):
                 if self.parameter == 'aw0':
-                    setattr(A_inpt,self.parameter,n_p)
+                    setattr(A_inpt,'aw0',n_p)
                     setattr(A_inpt,'awd',n_p)
+                    setattr(inp,'aw0',n_p)
+                    setattr(inp,'awd',n_p)
                 else:
                     n_par = int(n_p)
                     if self.parameter in A_undl[0:2]:
@@ -364,12 +373,14 @@ class FEL_simulation_block(object):
                 n_par =float(n_p)
                 setattr(A_inpt,self.parameter,n_p)
                 setattr(inp,self.parameter,n_p)
-            A_undulator=self.undulator_design(A_inpt)
-            setattr(inp,'lat',A_undulator['Magnetic Lattice'])
-            setattr(inp,'latticefile',inp_file+'.lat')
-            setattr(inp,'magin',1)
-            if self.parameter !='aw0':
-                inp = self.beta_matching(inp,inp.run_dir)
+            setattr(inp,'magin',0)
+            setattr(inp,'lat',None)
+            #A_undulator=self.undulator_design(A_inpt)
+            #setattr(inp,'lat',A_undulator['Magnetic Lattice'])
+            #setattr(inp,'latticefile',inp_file+'.lat')
+            #setattr(inp,'magin',1)
+            #if self.parameter !='aw0':
+            inp = self.beta_matching(inp,inp.run_dir)
             if inp.edist!=None:
                 inp0=inp
                 for i_tw in getattr(self,'tw_match'):
@@ -380,8 +391,8 @@ class FEL_simulation_block(object):
             n_par = float(n_p) 
             setattr(A_inpt,self.parameter,n_p)
             setattr(inp,self.parameter,n_p)
-            setattr(inp,'lat',A_undulator['Magnetic Lattice'])
-            setattr(inp,'magin',1)
+            #setattr(inp,'lat',A_undulator['Magnetic Lattice'])
+            #setattr(inp,'magin',1)
         return inp
         
     def gen_outplot_single(self,run_inp= [], itdp = True,savefig=True):
@@ -458,7 +469,7 @@ class FEL_simulation_block(object):
                 for tick in plot_ax.xaxis.get_major_ticks():
                     tick.label.set_fontsize('8')
                 plot_ax.grid(True)
-        lgd = ax[0].legend(loc=9,bbox_to_anchor=(0.98,0.4),prop={'size':4.5})
+        lgd = ax[0].legend(loc=9,bbox_to_anchor=(0.98,0.4),prop={'size':5.5})
         art.append(lgd)
     
         if savefig!=False:
@@ -565,9 +576,9 @@ class FEL_simulation_block(object):
         plt.rcParams['text.latex.unicode']=False
         #Plot distribution
         if getattr(inp,'edist')!=None:
-            plot_edist(getattr(inp,'edist'),figsize=20,savefig=True,showfig=False,plot_x_y=True,plot_xy_s=False,bins=(250,250,250,250)) 
-            plot_edist(getattr(inp,'edist'),figsize=20,savefig=True,showfig=False,plot_x_y=False,plot_xy_s=True,bins=(250,250,250,250))
-            bfd_b = edist2beam(getattr(inp,'edist'),step=float(10.0*getattr(inp,'xlamds')))
+            plot_edist(getattr(inp,'edist'),figsize=20,savefig=True,showfig=False,plot_x_y=True,plot_xy_s=False,bins=(100,100,100,100)) 
+            plot_edist(getattr(inp,'edist'),figsize=20,savefig=True,showfig=False,plot_x_y=False,plot_xy_s=True,bins=(100,100,100,100))
+            bfd_b = edist2beam(getattr(inp,'edist'),step=float(50.0*getattr(inp,'xlamds')))
             setattr(bfd_b,'filePath',self.file_pout+'slice_edist')
             plot_beam(bfd_b,savefig=True,showfig=False)
         elif getattr(inp,'beam')!=None and hasattr(inp.edist,'I') and hasattr(inp.beam,'eloss'):
@@ -587,7 +598,7 @@ class FEL_simulation_block(object):
             self.gen_outplot_single(run_inp= s_scan_inp, itdp = False,savefig=True)
         plt.close("all")
         
-    def GEN_simul_preproc(self,A_input,i_aft=0):
+    def GEN_simul_preproc(self,A_input,i_aft=0,i_fs=0):
         if not self.file_pout.endswith('/'):
             self.file_pout=self.file_pout+'/'
         
@@ -629,7 +640,7 @@ class FEL_simulation_block(object):
                 print('++++ Number of noise realisations {0} ++++++'.format(num))
     
             # setting the undulator design( Magnetic Lattice)
-        A_undulator = self.undulator_design(A_input)
+        A_undulator = self.undulator_design(A_input,i_fs)
         
             # Fill in the beam object
         A_beam = self.BeamDefinition(A_input)
@@ -720,7 +731,7 @@ class FEL_simulation_block(object):
         for n_par in s_scan:
             for run_id in run_ids:           
                 inp.runid = run_id
-                inp.lout =  [1,1,1,1,1,0,1,1,1,1,1,0,0,1,0,0,0,0,0]
+                #inp.lout =  [1,1,1,1,1,0,1,1,1,1,1,0,0,1,0,0,0,0,0]
                 if ((self.stat_run==1) or (self.i_scan==1)):
                     setattr(inp,'ipseed',-1)
                 else:
@@ -745,8 +756,8 @@ class FEL_simulation_block(object):
                         raise
                 if (A_input.latticefile != None or A_input.latticefile != 0) and A_input.magin ==1:
                     shutil.copyfile(os.path.dirname(self.gen_file)+'/'+A_input.latticefile,inp.run_dir+A_input.latticefile) 
-                                  
-                if self.i_scan==1 and inp.f1st==1 and A_input.latticefile ==None:
+                 
+                if self.i_scan==1 and A_input.latticefile==None:
                     inp= self.GEN_scan(n_par ,A_input,A_undulator,inp)                      
                 elif self.i_scan==0 and inp.f1st==1 and A_input.latticefile ==None:
                     inp.lat = A_undulator['Magnetic Lattice']
@@ -757,6 +768,9 @@ class FEL_simulation_block(object):
                 elif self.i_scan!=0 and inp.f1st ==0 and A_input.latticefile ==None:
                     inp.lat =None
                     setattr(inp,'magin',0)
+                if inp.wcoefz[2]!= 0 :
+                    inp.lat =None
+                    inp.magin =0
                 inp_arr.append(inp)                   
                 launcher=get_genesis_launcher(self.gen_launch)
                 print('+++++ Starting simulation of noise realisation {0}'.format(run_id))
@@ -771,6 +785,7 @@ class FEL_simulation_block(object):
                 inp.fieldfile=None
                 inp.radfile=None
         print('++++ postprocessing (results saved in {0}results++++'.format(self.file_pout))
-        self.post_processing(inp,s_scan)
+        if i_aft!='xls':
+            self.post_processing(inp,s_scan)
         plt.close("all")
         return inp_arr

@@ -6,7 +6,7 @@ interface to genesis
 import struct
 from copy import copy, deepcopy
 import time
-import os
+import os,subprocess
 import socket
 import errno
 from ocelot.rad.fel import *
@@ -966,7 +966,7 @@ class WaistScanResults():
 
 
 
-def run_genesis(inp, launcher, read_level=2, assembly_ver='pyt', i_aft=0,debug=1):#HMCC
+def run_genesis(inp, launcher, read_level=2, assembly_ver='pyt', i_aft='0',debug=1):#HMCC
     '''
     Main function for executing Genesis code
     inp               - GenesisInput() object with genesis input parameters
@@ -1360,7 +1360,7 @@ def generate_input(up, beam, itdp=False):
     inp.xlamds = felParameters.lambda0
     inp.prad0 = felParameters.power
     inp.prad0 = 0
-    inp.fbess0 = felParameters.fc
+    inp.fbess0 = felParameters.fc#HMCC comment
     inp.zrayl = felParameters.zr
 
     if itdp:
@@ -1398,8 +1398,10 @@ def get_genesis_launcher(launcher_program=None):
          ##### HMCC #####
         if launcher_program  == "genesis2.0":
             command_genesis = "mpiexec -np 25" + str(launcher.mpiParameters) + " "+launcher_program +' < tmp.cmd | tee log'
-        elif launcher_program == "genesis3.2.1":
-            command_genesis = "mpirun -np 25" + str(launcher.mpiParameters) +" " + launcher_program + " < tmp.cmd | tee log "
+        elif launcher_program == "genesis3.2.1" :
+            command_genesis = "mpirun -np 25" + str(launcher.mpiParameters) +" " + launcher_program + " < tmp.cmd | tee log " 
+        elif launcher_program == "genesis_mpi" :
+            command_genesis = "mpiexec -np 25" + str(launcher.mpiParameters) +" /home/qfi29231/Genesis_code/Original_version/" +launcher_program + " < tmp.cmd | tee log "           
         else:
             command_genesis = launcher_program
         launcher.program = command_genesis
@@ -2140,7 +2142,10 @@ def dpa2edist(out, dpa, num_part=1e5, smear=1,debug=1):
     assert out('itdp') == 1.0, '! steadystate Genesis simulation, dpa2dist() not implemented yet!'#HMCC
 
     npart = int(out('npart')) 
-    nslice=int(out('nslice')* out('ishsty'))
+    if out('nslice')!=0:#HMCC
+        nslice=int(out('nslice')* out('ishsty'))
+    else:#HMCC
+        nslice = int(out.nSlices * out('ishsty')) #HMCC uncomment
     #nslice = int(out.nSlices * out('ishsty')) 
     nbins = int(out('nbins'))
     xlamds = out('xlamds')
@@ -2541,8 +2546,8 @@ def edist2beam(edist, step=1e-7,i_aft=0):#HMCC afterburner flag
                 beam.npart[i]= N_p  #HMCC particles per slice
                 beam.ex[i]= beam.g0[i] *np.sqrt((dxx*dpxpx)-np.square(dxp))
                 beam.ey[i]= beam.g0[i] *np.sqrt((dyy*dpypy)-np.square(dyp)) 
-                beam.betax[i] = dist_mean_g * mean(dxx) / beam.ex[i] 
-                beam.betay[i] = dist_mean_g * mean(dyy) / beam.ey[i] 
+                beam.betax[i] = mean(dxx) / beam.ex[i] * dist_mean_g
+                beam.betay[i] = mean(dyy) / beam.ey[i]*dist_mean_g 
                 beam.alphax[i] = -dist_mean_g * dxp / beam.ex[i]
                 beam.alphay[i] = -dist_mean_g * dyp / beam.ey[i]   
                 #HMCC
@@ -2726,6 +2731,12 @@ def beam_file_str(beam,i_aft=0):#HMCC
                  ['dg', 'DELGAM'],
                  ['eloss', 'ELOSS'],
                  ]
+    elif i_aft =='xls':
+        array=[['z','ZPOS'],
+               ['I','CURPEAK'],
+              ['x','XBEAM'],
+              ['y','YBEAM']
+              ]
     else: 
         array=[['z', 'ZPOS'], 
                ['I', 'CURPEAK'], 
