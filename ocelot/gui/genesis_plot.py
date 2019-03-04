@@ -1926,8 +1926,9 @@ def plot_dpa_bucket_out(out, dpa=None, slice_pos=None, repeat=1, GeV=1, figsize=
     return plot_dpa_bucket(dpa=dpa, slice_num=slice_num, repeat=repeat, GeV=GeV, figsize=figsize, cmap=cmap, scatter=scatter, energy_mean=energy_mean, legend=legend, fig_name=fig_name, savefig=savefig, showfig=showfig, suffix=suffix, bins=bins, debug=debug)
 
 
-def plot_dpa_bucket(dpa, slice_num=None, repeat=1, GeV=1, figsize=4, cmap=def_cmap, scatter=False, energy_mean=None, legend=True, fig_name=None, savefig=False, showfig=True, suffix='', bins=(50,50), debug=1, return_mode_gamma=0):
-    part_colors = ['darkred', 'orange', 'g', 'b', 'm','c','y']
+def plot_dpa_bucket(dpa, slice_num=None, repeat=1, GeV=1, figsize=4, cmap=def_cmap, scatter=False, energy_mean=None, legend=True, fig_name=None, savefig=False, showfig=True, suffix='', bins=(50,50), debug=1, return_mode_gamma=0,i_mov=0):
+    #part_colors = ['darkred', 'orange', 'g', 'b', 'm','c','y'] HMCC comment
+    
     # cmap='BuPu'
     y_bins = bins[0]
     z_bins = bins[1]
@@ -2020,10 +2021,11 @@ def plot_dpa_bucket(dpa, slice_num=None, repeat=1, GeV=1, figsize=4, cmap=def_cm
         
 
     if scatter == True:
+        part_colors=[cmap(i) for i in np.linspace(0,0.999,nbins)] #HMCC
         for irep in range(repeat):
             for ibin in range(nbins):
                 ax_main.scatter(phase[ibin, :] + 2 * np.pi * (irep), energy[ibin, :], color=part_colors[ibin], marker='.')
-
+                #ax_main.scatter(phase[ibin, :] + 2 * np.pi * (irep), energy[ibin, :], marker='.')#HMCC
         # ax_z_hist.set_xlim([edges[0], edges[-1]])
 
     elif scatter == False:
@@ -2049,10 +2051,21 @@ def plot_dpa_bucket(dpa, slice_num=None, repeat=1, GeV=1, figsize=4, cmap=def_cm
         plt.show()
     else:
         plt.close('all')
+    if i_mov !=0:
+        return ax_main
 
 
-def plot_edist(edist, figsize=35, fig_name=None, savefig=False, showfig=True, scatter=False, plot_x_y=True, plot_xy_s=True, bins=(50, 50, 50, 50), flip_t=True, s_units='um', e_units='ev', cmin=0, e_offset=None, cmap=def_cmap, debug=1):
+def plot_edist(edist, figsize=45, fig_name=None, savefig=False, showfig=True, scatter=False, plot_x_y=True, plot_xy_s=False, bins=(50, 50, 50, 50), flip_t=True, s_units='um', e_units='ev', cmin=0, e_offset=None, cmap=def_cmap, debug=1):
     import matplotlib as mpl #HMCC
+    
+    font_s = 'medium'
+    font_t = 'xx-small'
+    font_t2 = 6.6
+    
+    if plot_xy_s==True:
+        plot_x_y =False
+    else:
+        plot_x_y=True
 
     if showfig == False and savefig == False:
         return
@@ -2068,11 +2081,12 @@ def plot_edist(edist, figsize=35, fig_name=None, savefig=False, showfig=True, sc
 
     if fig_name == None:
         fig_name = 'Electron distribution ' + edist.fileName()
+
     fig = plt.figure(fig_name)
     fig.clf()
-    mpl.rcParams.update({'font.size':48})#HMCC
+    #mpl.rcParams.update({'font.size':'x-large'})#HMCC
     #fig.set_size_inches(((3 + plot_x_y + plot_xy_s) * figsize, 3 * figsize), forward=True) HMCC
-    fig.set_size_inches(((3+plot_x_y + plot_xy_s) * figsize, 3 * figsize), forward=True)
+    #fig.set_size_inches(((3+plot_x_y + plot_xy_s) * figsize, 3 * figsize), forward=True)
 
     if s_units == 'fs':
         mult = 1e15
@@ -2085,126 +2099,123 @@ def plot_edist(edist, figsize=35, fig_name=None, savefig=False, showfig=True, sc
         # s = -edist.t * speed_of_light * 1e6
     # else:
         # s = edist.t * speed_of_light * 1e6
+    if plot_xy_s: 
+        #fig.set_size_inches(((3+plot_xy_s) * figsize, 3 * figsize), forward=True)
+        hist, edges = np.histogram(s, bins=bins[2])  # calculate current histogram
+        edges = edges[0:-1]  # remove the last bin edge to save equal number of points
+        hist_int = np.trapz(hist, edges) / mult  # normalize
+        hist = np.rint(hist.astype(float) / (hist_int / float(edist.charge())))
 
-    hist, edges = np.histogram(s, bins=bins[2])  # calculate current histogram
-    edges = edges[0:-1]  # remove the last bin edge to save equal number of points
-    hist_int = np.trapz(hist, edges) / mult  # normalize
-    hist = np.rint(hist.astype(float) / (hist_int / float(edist.charge())))
-
-    ax_curr = fig.add_subplot(3, 1+plot_x_y + plot_xy_s, 1)
+        ax_curr = fig.add_subplot(3, 1+plot_xy_s, 1)
     #ax_curr.hist(s, bins,color='b')
-    ax_curr.plot(edges, hist/1000, color='b',linewidth=2)
-    ax_curr.set_xlabel(s_label,fontsize='x-large')#HMCC
-    ax_curr.set_ylabel('I [kA]',fontsize='x-large')#HMCC
-    ax_curr.tick_params(axis='both', which='both',labelsize='x-large' )#HMCC
+        ax_curr.plot(edges, hist/1000, color='b',linewidth=2)
+        ax_curr.set_xlabel(s_label,fontsize=font_s)#HMCC
+        ax_curr.set_ylabel('I [kA]',fontsize=font_s)#HMCC
+        ax_curr.tick_params(axis='both', which='both',labelsize=font_t2)#HMCC
 
-    ax_se = fig.add_subplot(3, 1+plot_x_y + plot_xy_s, 2, sharex=ax_curr)#HMCC
-    if e_units == 'ev':
-        energy = edist.g * m_e_MeV
-    else:  # elif beam_E_plot=='gamma':
-        energy = edist.g
+        ax_se = fig.add_subplot(3, 1+plot_xy_s, 2, sharex=ax_curr)#HMCC
+        if e_units == 'ev':
+            energy = edist.g * m_e_MeV
+        else:  # elif beam_E_plot=='gamma':
+            energy = edist.g
         
-    if e_offset == None:
-        e_offset = int(mean(energy))
-    if scatter:
-        ax_se.scatter(s, energy - e_offset, marker='.')
-    else:
-        ax_se.hist2d(s, energy - e_offset, [bins[2], bins[3]], cmin=cmin, cmap=cmap)
+        if e_offset == None:
+            e_offset = int(mean(energy))
+        if scatter:
+            ax_se.scatter(s, energy - e_offset, marker='.')
+        else:
+            ax_se.hist2d(s, energy - e_offset, [bins[2], bins[3]], cmin=cmin, cmap=cmap)
 
-    ax_se.set_xlabel(s_label,fontsize='x-large')#HMCC
-    if e_units == 'ev':
-        ax_se.set_ylabel('E + ' + str(e_offset) + ' [MeV]',fontsize='x-large')#HMCC
-    else:  # elif beam_E_plot=='gamma':
-        ax_se.set_ylabel('$\gamma$ + ' + str(e_offset),fontsize='x-large')#HMCC
-    ax_se.tick_params(axis='both', which='both',labelsize='x-large' )#HMCC
+        ax_se.set_xlabel(s_label,fontsize=font_s)#HMCC
+        if e_units == 'ev':
+            ax_se.set_ylabel('E + ' + str(e_offset) + ' [MeV]',fontsize=font_s)#HMCC
+        else:  # elif beam_E_plot=='gamma':
+            ax_se.set_ylabel('$\gamma$ + ' + str(e_offset),fontsize=font_s)#HMCC
+        ax_se.tick_params(axis='both', which='both',labelsize=font_t2 )#HMCC
 
-    if plot_xy_s:
-        ax_xs = fig.add_subplot(3, 1+plot_x_y + plot_xy_s, 4 + plot_x_y, sharex=ax_curr)
+        ax_xs = fig.add_subplot(3, 1+plot_xy_s, 3, sharex=ax_curr)
         if scatter:
             ax_xs.scatter(s, 1e6 * edist.x, marker='.')
         else:
             ax_xs.hist2d(s, 1e6 * edist.x, [bins[2], bins[0]], cmin=cmin, cmap=cmap)
-        ax_xs.set_xlabel(s_label,fontsize='x-large')#HMCC
-        ax_xs.set_ylabel('x [$\mu$m]',fontsize='x-large')#HMCC
-        ax_xs.tick_params(axis='both', which='both',labelsize='x-large' )#HMCC
+        ax_xs.set_xlabel(s_label,fontsize=font_s)#HMCC
+        ax_xs.set_ylabel('x [$\mu$m]',fontsize=font_s)#HMCC
+        ax_xs.tick_params(axis='both', which='both',labelsize=font_t2)#HMCC
 
-        ax_ys = fig.add_subplot(3, 1+plot_x_y + plot_xy_s, 2, sharex=ax_curr)
+        ax_ys = fig.add_subplot(3, 1+plot_xy_s, 4, sharex=ax_curr)
         if scatter:
             ax_ys.scatter(s, 1e6 * edist.y, marker='.')
         else:
-            ax_ys.hist2d(s, 1e6 * edist.y, [bins[2], bins[1]], cmin=cmin, cmap=cmap)
-        ax_ys.set_xlabel(s_label)#HMCC
-        ax_ys.set_ylabel('y [$\mu$m]')#HMCC
-        ax_ys.tick_params(axis='both', which='both',labelsize='x-large' )#HMCC
-    if plot_x_y:
-        ax_xy = fig.add_subplot(3, 1+plot_x_y + plot_xy_s, 3 + plot_xy_s)
-        if scatter:
-            ax_xy.scatter(edist.x * 1e6, edist.y * 1e6, marker='.')
-        else:
-            ax_xy.hist2d(edist.x * 1e6, edist.y * 1e6, [bins[0], bins[1]], cmin=cmin, cmap=cmap)
-        ax_xy.set_xlabel('x [$\mu$m]',fontsize='x-large')#HMCC
-        ax_xy.set_ylabel('y [$\mu$m]',fontsize='x-large')#HMCC
-        ax_xy.tick_params(axis='both', which='both',labelsize='x-large' )#HMCC
-        ax_pxpy = fig.add_subplot(3, 1+plot_x_y + plot_xy_s, 4 + 2 * plot_xy_s)
-        if scatter:
-            ax_pxpy.scatter(edist.xp * 1e6, edist.yp * 1e6, marker='.')
-        else:
-            ax_pxpy.hist2d(edist.xp * 1e6, edist.yp * 1e6, [bins[0], bins[1]], cmin=cmin, cmap=cmap)
-        ax_pxpy.set_xlabel('px [$\mu$rad]',fontsize='x-large')#HMCC
-        ax_pxpy.set_ylabel('py [$\mu$rad]',fontsize='x-large')#HMCC
-        ax_pxpy.tick_params(axis='both', which='both',labelsize='x-large' )#HMCC
-
-    # if scatter:
-    if flip_t:
-        ax_curr.set_xlim([np.amax(s), np.amin(s)])
-    else:
-        ax_curr.set_xlim([np.amin(s), np.amax(s)])
-        
-    ax_curr.set_ylim(ymin=0)
-
-    ###HMCC ####
-    if plot_xy_s:
-        ax_xps = fig.add_subplot(3, 1+plot_x_y + plot_xy_s, 5 + plot_x_y)
+            ax_ys.hist2d(s, 1e6 * edist.y, [bins[2], bins[1]], cmin=cmin, cmap=cmap) 
+ 
+        ax_ys.set_xlabel(s_label,fontsize=font_s)#HMCC
+        ax_ys.set_ylabel('y [$\mu$m]',fontsize=font_s)#HMCC
+        ax_ys.tick_params(axis='both', which='both',labelsize=font_t2 )#HMCC# 
+        ax_xps = fig.add_subplot(3, 1+plot_xy_s,5)
         if scatter:
             ax_xps.scatter(s, 1e6 * edist.xp, marker='.')
         else:
             ax_xps.hist2d(s, 1e6 * edist.xp, [bins[2], bins[1]], cmin=cmin, cmap=cmap)
-            ax_xps.set_xlabel(s_label,fontsize='x-large')#HMCC
-            ax_xps.set_ylabel('px [$\mu$rad]',fontsize='x-large')#HMCC 
-            ax_xps.tick_params(axis='both', which='both',labelsize='x-large' )#HMCC
-        ax_yps = fig.add_subplot(3, 1+plot_x_y + plot_xy_s, 6 + plot_x_y)
+            ax_xps.set_xlabel(s_label,fontsize=font_s)#HMCC
+            ax_xps.set_ylabel('px [$\mu$rad]',fontsize=font_s)#HMCC 
+            ax_xps.tick_params(axis='both', which='both',labelsize=font_t2 )#HMCC
+        ax_yps = fig.add_subplot(3, 1+plot_xy_s, 6)
         if scatter:
             ax_yps.scatter(s, 1e6 * edist.yp, marker='.')
         else:
             ax_yps.hist2d(s, 1e6 * edist.yp, [bins[2], bins[1]], cmin=cmin, cmap=cmap)
-        ax_yps.set_xlabel(s_label,fontsize='x-large')#HMCC
-        ax_yps.set_ylabel('py [$\mu$rad]',fontsize='x-large')#HMCC
-        ax_yps.tick_params(axis='both', which='both',labelsize='x-large' )#HMCC
-    elif plot_x_y:
-        ax_xpx = fig.add_subplot(3,1+plot_x_y + plot_xy_s, 5 + 2 * plot_xy_s)
+        ax_yps.set_xlabel(s_label,fontsize=font_s)#HMCC
+        ax_yps.set_ylabel('py [$\mu$rad]',fontsize=font_s)#HMCC
+        ax_yps.tick_params(axis='both', which='both',labelsize=font_t2 )#HMCC
+        if scatter:
+            if flip_t:
+                ax_curr.set_xlim([np.amax(s), np.amin(s)])
+            else:
+                ax_curr.set_xlim([np.amin(s), np.amax(s)])       
+        ax_curr.set_ylim(ymin=0)
+        fig.subplots_adjust(wspace=0.5, hspace=0.3) #HMCC
+    else:
+        ax_xy = fig.add_subplot(2, 1+plot_x_y, 1)
+        if scatter:
+            ax_xy.scatter(edist.x * 1e6, edist.y * 1e6, marker='.')
+        else:
+            ax_xy.hist2d(edist.x * 1e6, edist.y * 1e6, [bins[0], bins[1]], cmin=cmin, cmap=cmap)
+        ax_xy.set_xlabel('x [$\mu$m]',fontsize=font_s)#HMCC
+        ax_xy.set_ylabel('y [$\mu$m]',fontsize=font_s)#HMCC
+        ax_xy.tick_params(axis='both', which='both',labelsize=font_t )#HMCC
+        ax_pxpy = fig.add_subplot(2, 1+plot_x_y, 2)
+        if scatter:
+            ax_pxpy.scatter(edist.xp * 1e6, edist.yp * 1e6, marker='.')
+        else:
+            ax_pxpy.hist2d(edist.xp * 1e6, edist.yp * 1e6, [bins[0], bins[1]], cmin=cmin, cmap=cmap)
+        ax_pxpy.set_xlabel('px [$\mu$rad]',fontsize=font_s)#HMCC
+        ax_pxpy.set_ylabel('py [$\mu$rad]',fontsize=font_s)#HMCC
+        ax_pxpy.tick_params(axis='both', which='both',labelsize=font_t )#HMCC
+        ax_xpx = fig.add_subplot(2,1+plot_x_y, 3)
         if scatter:
             ax_xpx.scatter(edist.x * 1e6, edist.xp * 1e6, marker='.')
         else:
             ax_xpx.hist2d(edist.x * 1e6, edist.xp * 1e6, [bins[0], bins[1]], cmin=cmin, cmap=cmap)
-        ax_xpx.set_xlabel('x [$\mu$m]',fontsize='x-large')#HMCC
-        ax_xpx.set_ylabel('px [$\mu$rad]',fontsize='x-large')#HMCC
+        ax_xpx.set_xlabel('x [$\mu$m]',fontsize=font_s)#HMCC
+        ax_xpx.set_ylabel('px [$\mu$rad]',fontsize=font_s)#HMCC
         ax_xpx.set_xlim([0.9*1e6*np.amax(edist.x), 1.1*1e6*np.amin(edist.x)])
         ax_xpx.set_ylim([0.9*1e6*np.amax(edist.xp), 1.1*1e6*np.amin(edist.xp)]) 
-        ax_xpx.tick_params(axis='both', which='both',labelsize='x-large' )#HMCC
-        ax_xpy = fig.add_subplot(3,1+plot_x_y + plot_xy_s, 6 + 2 * plot_xy_s)
+        ax_xpx.tick_params(axis='both', which='both',labelsize=font_t )#HMCC
+        ax_xpy = fig.add_subplot(2,1+plot_x_y, 4)
         if scatter:
             ax_xpy.scatter(edist.y * 1e6, edist.yp * 1e6, marker='.')
         else:
             ax_xpy.hist2d(edist.y * 1e6, edist.yp * 1e6, [bins[0], bins[1]], cmin=cmin, cmap=cmap)
-        ax_xpy.set_xlabel('y [$\mu$m]',fontsize='x-large')#HMCC
-        ax_xpy.set_ylabel('py [$\mu$m]',fontsize='x-large')#HMCC
+        ax_xpy.set_xlabel('y [$\mu$m]',fontsize=font_s)#HMCC
+        ax_xpy.set_ylabel('py [$\mu$m]',fontsize=font_s)#HMCC
         ax_xpy.set_xlim([0.9*1e6*np.amax(edist.y), 1.1*1e6*np.amin(edist.y)])
         ax_xpy.set_ylim([0.85*1e6*np.amax(edist.yp),1.1*1e6*np.amin(edist.yp)])
-        ax_xpy.tick_params(axis='both', which='both',labelsize='x-large' )#HMCC
+        ax_xpy.tick_params(axis='both', which='both',labelsize=font_t )#HMCC 
+        fig.subplots_adjust(wspace=0.5, hspace=0.5) #HMCC
 
     #########
 
-    fig.subplots_adjust(wspace=0.5, hspace=0.5) #HMCC
+   
 
     plt.draw()
     if savefig != False:
@@ -2212,12 +2223,10 @@ def plot_edist(edist, figsize=35, fig_name=None, savefig=False, showfig=True, sc
             savefig = 'png'
         if debug > 1:
             print('      saving ' + edist.fileName() + '.' + savefig)
-        if plot_x_y and plot_xy_s==False:#HMCC
+        if plot_x_y and not plot_xy_s:#HMCC
             s_uff = 'x_y'#HMCC
-        elif plot_xy_s and plot_x_y==False:#HMCC
+        else:#HMCC
             s_uff = 'xy_s'
-        elif plot_xy_s and plot_x_y:#HMCC
-            s_uff = 'total'#HMCC
         plt.savefig(edist.filePath + '_'+s_uff+'.' + savefig, format=savefig)#HMCC
 
     if showfig:

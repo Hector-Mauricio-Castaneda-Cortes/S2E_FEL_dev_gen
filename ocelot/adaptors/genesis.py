@@ -3739,6 +3739,31 @@ def cut_lattice(lat, n_cells, elem_in_cell=4):
     return lat_new
     # returns lattice with #cells elements removed
 
+### HMCC ####
+def get_brightness_bandwidth(g):
+    '''
+    inputs : GenesisOutput Object()
+    returns brightness and bandwidth
+    '''
+    spectrum_lamdwidth_fwhm = np.zeros_like(g.z)
+    spectrum_lamdwidth_std = np.zeros_like(g.z)
+
+    for zz in range(g.nZ):
+        spectrum_lamdwidth_fwhm[zz] = None
+        spectrum_lamdwidth_std[zz] = None
+        if np.sum(g.spec[:,zz])!=0:
+            pos, width, arr = fwhm3(g.spec[:, zz])
+            if width != None:
+                if arr[0] == arr[-1]:
+                    dlambda = abs(g.freq_lamd[pos] - g.freq_lamd[pos-1])
+                else:
+                    dlambda = abs( (g.freq_lamd[arr[0]] - g.freq_lamd[arr[-1]]) / (arr[0] - arr[-1]) )
+                spectrum_lamdwidth_fwhm[zz] = dlambda * width / g.freq_lamd[pos]
+                            # spectrum_lamdwidth_fwhm[zz] = abs(g.freq_lamd[arr[0]] - g.freq_lamd[arr[-1]]) / g.freq_lamd[pos]  # the FWHM of spectral line (error when peakpos is at the edge of lamdscale)
+
+        spectrum_lamdwidth_std[zz] = std_moment(g.freq_lamd, g.spec[:, zz]) / n_moment(g.freq_lamd, g.spec[:, zz], 0, 1)
+    return np.true_divide(g.energy,spectrum_lamdwidth_std),np.array(spectrum_lamdwidth_std)
+
 
 
 '''
