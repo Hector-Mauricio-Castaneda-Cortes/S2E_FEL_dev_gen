@@ -22,6 +22,7 @@ m_e_GeV = m_e_eV / 1e+9      # GeV
 mu_0 = 4*pi*1e-7
 epsilon_0 = 8.854187817620e-12 # F/m
 
+h_J_s = 6.26070040e-34     # J s
 h_eV_s = 4.135667516e-15    #eV s
 hr_eV_s = h_eV_s/2./pi
 ro_e = 2.8179403267e-15     # m

@@ -13,9 +13,10 @@ HMCC: 26-10-18: Workaround for beta scan (fixed for aw0)
 HMCC: 26-06-18: Add tapering (wcoefz) support
 HMCC: 26-10-18: Add support for fresh slice.
 HMCC: 01-03-19: Add brightness method to the class and comments on each class method.
-HMCC  01-03-19: Setting ffspce to -1 by default (for the purposes of BW smoothness). Add zd as a parameter to control 
+HMCC  01-03-19: Setting ffspec to -1 by default (for the purposes of BW smoothness). Add zd as a parameter to control
                 where to look at the pulse properties (plotting) within the undulator.
-HMCC: 04-03-19 Add method to plot brightness and BW (arguments: array of output objects) 
+HMCC: 04-03-19 Add method to plot brightness and BW (arguments: array of output objects)
+HMCC: 29-03-19 Using the definition of brightness in the method to calculate it.
 '''
 #################################################
 ### import of all modules that are required.
@@ -36,6 +37,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os,sys, errno, shutil
 import time
+from scipy.special import jv
 
 
 class FEL_simulation_block(object):
@@ -85,7 +87,7 @@ class FEL_simulation_block(object):
             setattr(self, key, kwargs[key])
         self.zd = 2.05
 
-    def read_GEN_input_file(self):   
+    def read_GEN_input_file(self):
         '''
          Reading input file. Path in the data dictionary
 
@@ -162,7 +164,7 @@ class FEL_simulation_block(object):
 
          Outputs: A_undulator Dictionary with two entries (Undulator parameters and Magnetic lattice)
         '''
-        
+
         from ocelot.cpbd.elements import Drift, Quadrupole, Undulator
         from ocelot.cpbd.magnetic_lattice import MagneticLattice
         from ocelot.common.globals import m_e_GeV, speed_of_light, h_eV_s
@@ -227,7 +229,7 @@ class FEL_simulation_block(object):
         up.printParameters()
         return {'Undulator Parameters':up,'Magnetic Lattice':sase3}
 
-    def BeamDefinition(self,A_contents): 
+    def BeamDefinition(self,A_contents):
         '''
          Definition of the beam object.
 
@@ -248,7 +250,7 @@ class FEL_simulation_block(object):
             setattr(beamf, item,A_dict[item])
         return beamf
 
-    def beta_matching(self,inp,f_path): 
+    def beta_matching(self,inp,f_path):
         '''
          Method to do betamatching in order to obtain the twiss parameters and correct them.
 
@@ -257,7 +259,7 @@ class FEL_simulation_block(object):
 
          Outputs: inp : Input object with the corrected twiss parameter values.
         '''
-        file 
+        file
         import os
         import shutil
         from ocelot.adaptors.genesis import filename_from_path
@@ -829,7 +831,7 @@ class FEL_simulation_block(object):
             inp = self.GEN_rewrite_par(inp)
         else:
             pass
-        
+
         # Set FFSPEC parameter to -1 for more smooth BW.
         setattr(inp,'ffspec',-1)
         out_arr=[]
@@ -860,7 +862,7 @@ class FEL_simulation_block(object):
                         pass
                     else:
                         raise
-                run_dir = inp.run_dir 
+                run_dir = inp.run_dir
                 if (A_input.latticefile != None or A_input.latticefile != 0) and A_input.magin ==1:
                     shutil.copyfile(os.path.dirname(self.gen_file)+'/'+A_input.latticefile,inp.run_dir+A_input.latticefile)
 
@@ -880,20 +882,20 @@ class FEL_simulation_block(object):
                     inp.magin =0
                 launcher=get_genesis_launcher(self.gen_launch)
                 print('+++++ Starting simulation of noise realisation {0}'.format(run_id))
-               
+
                 g = run_genesis(inp,launcher,i_aft=i_aft)
                 setattr(g,'filePath',str(inp.run_dir))
                 out_arr.append(g)
                 if (inp.itdp==1):
-                    plot_gen_out_all(handle=g, savefig=True, showfig=False, choice=(1, 1, 1, 1, self.zd, 0, 0, 0, 0, 0, 0, 0, 0), vartype_dfl=complex128, debug=1) 
-               
+                    plot_gen_out_all(handle=g, savefig=True, showfig=False, choice=(1, 1, 1, 1, self.zd, 0, 0, 0, 0, 0, 0, 0, 0), vartype_dfl=complex128, debug=1)
+
                 inp.latticefile=None
                 inp.outputfile=None
                 inp.edistfile=None
                 inp.beamfile=None
                 inp.fieldfile=None
                 inp.radfile=None
-               
+
         print('++++ postprocessing (results saved in {0}results++++'.format(self.file_pout))
         if i_aft!='xls':
             self.post_processing(inp,s_scan)
@@ -909,41 +911,86 @@ class FEL_simulation_block(object):
             Inputs: g: Output object or path where the output file is located
             Outputs: dictionary with brightness and bw_std and z for post-processing
         '''
+        apar = []
+        apar_int=[]
         if isinstance(g,str):
             if not g.endswith(os.path.sep):
                 g=g+os.path.sep
             g=read_out_file([g+files for files in os.listdir(g) if files.endswith('gout') and files.startswith('run.')][0])
-        
+        nsec = int(g.parameters['nsec'][0])
+        nwig = int(g.parameters['nwig'][0])
+        iwityp = int(g.parameters['iwityp'][0])
+        for key,key2 in zip(['emitx','emity','xlamd','xlamds','aw0','gamma0'],\
+                            ['fl','dl','drl','nsec','nwig','delz']):
+            if g.parameters[key][0].find('D')!= -1 or g.parameters[key][0].find('D') != -1:
+                apar.append(float(g.parameters[key][0].replace('D','e')))
+                apar_int.append(float(g.parameters[key2][0].replace('D+','')))
+        sigmar = np.array([np.sqrt(apar[3]*z_in)/(4.0*np.pi) for z_in in g.z])
+        sigmarp = np.array([np.sqrt(apar[3]/z_in) for z_in in g.z])
+        divx=np.array([apar[0]/(apar[5]*rmsx) for rmsx in np.array(np.amax(g.xrms,axis=0))])
+        divy=np.array([apar[1]/(apar[5]*rmsy) for rmsy in np.array(np.amax(g.yrms,axis=0))])
+        sigma_xx = 1e6*np.sqrt(np.array([np.square(rmsx) + np.square(sigmarr) for rmsx,sigmarr in zip(np.amax(g.xrms,axis=0),sigmar)]))
+        sigma_yy = 1e6*np.sqrt(np.array([np.square(rmsy) + np.square(sigmarr) for rmsy,sigmarr in zip(np.amax(g.yrms,axis=0),sigmar)]))
+        sigma_xpr=np.sqrt(np.array([np.square(divvx) + np.square(sigmarrp) for divvx,sigmarrp in zip(divx,sigmarp)]))
+        sigma_ypr=np.sqrt(np.array([np.square(divvy) + np.square(sigmarrp) for divvy,sigmarrp in zip(divx,sigmarp)]))
         brightness,bw_std = get_brightness_bandwidth(g)
-        return {'z':g.z,'brightness':brightness,'bw_std':bw_std}
+        photon_flux = np.array([psat*apar[3]/(10*bw_std[iph]*h_J_s*speed_of_light) \
+                              for iph,psat in enumerate(np.amax(g.p_int,axis=0))])
+        #brightness_2 = np.array([1e-12*photon_f/np.square(apar[3]) for  photon_f in photon_flux])
+        brightness_2 = np.array([photon_flux[i]/(4*np.square(np.pi)*sigma_xx[i]*sigma_yy[i]*sigma_xpr[i]*sigma_ypr[i])\
+                                 for i in np.arange(g.z.shape[0])])
+        return {'z':np.array(g.z),'brightness':brightness_2,'bw_std':np.array(bw_std)}
 
     def subfig_brightness_bw(self,ax_bw, g, legend,colour1,colour2):
+        '''
+            Method to create a subplot with the brightness and the bandwidth as
+            a function of z. It uses the dictionary which is the output of the
+            method self.calculate_brightness_calculation
+
+            Inputs: ax_bw: axis object from matplotlib
+                    g: Output object.
+                    legend: Text to be added to the legend
+                    colour1: Colour of the BW plot
+                    colour2: Colour of the Brightness plot
+            Outputs: None
+        '''
         bw_dict=self.brightness_calculation(g)
-        ax_br = ax_bw.twinx()
-        ax_bw.plot(bw_dict['z'],bw_dict['bw_std'], '-',color =colour1, linewidth=1.5,label=legend)
-        ax_bw.set_ylabel(r'BW')
-   
-        plt.yticks(plt.yticks()[0][0:-1])
-
-        ax_br.plot(bw_dict['z'],bw_dict['brightness'], '--',color =colour2, linewidth=1.5)
-        ax_br.set_ylabel(r'Brightness[$\mu$J/BW]')
-       
-
-        ax_bw.grid(True) 
+        ax_bw.plot(bw_dict['z'],100.0*bw_dict['bw_std'], '-',color =colour1, linewidth=1.5,label=legend)
+        ax_bw.grid(True,color='navy')
         ax_bw.tick_params(axis='y', which='both', colors=colour1)
-        ax_bw.yaxis.label.set_color('navy')
+        ax_bw.set_ylabel(r'BW[%]',fontsize=10)
+        ax_bw.yaxis.label.set_color(colour1)
+        ax_bw.yaxis.get_offset_text().set_color(colour1)
+        ax_br = ax_bw.twinx()
+        ax_br.plot(bw_dict['z'],bw_dict['brightness'], '--',color =colour2, linewidth=1.5)
+        ax_br.set_ylabel(r'Brightness[N$_{photons}$/((mm-mrad)$^2$ $\times$ s$\times$ 0.1%BW)]',\
+            fontsize=10)
+        ax_br.yaxis.get_offset_text().set_color(colour2)
         ax_br.tick_params(axis='y', which='both', colors=colour2)
         ax_br.yaxis.label.set_color('darkgreen')
         ax_br.grid(False)
-        ax_br.set_ylim([0,1.01*np.amax(bw_dict['brightness'])])
+        ax_br.set_ylim([0.99*np.amin(bw_dict['brightness']),1.01*np.amax(bw_dict['brightness'])])
+        ax_bw.set_xlabel(r'z[m]',color='navy',fontsize=10)
         plt.yticks(plt.yticks()[0][0:-1])
-    def brightness_plot(self,g,savefig=True,showfig=True):            
+
+    def brightness_plot(self,g,savefig=True,showfig=True):
+        '''
+            Method to save a subplot of the brightness and the bandwidth as
+            a function of z. It calls the subfig_brightness_bw method to generate
+            the subplot and save it to a png file called 'brightness_bw.png' within
+            the self.file_pout directory
+
+            Inputs: g: Output object.
+                    savefig: Flag to save the figure to the file in the output directory
+                    showfig: Flag to show the figure in the jupyter notebook (ipython)
+            Outputs: None
+        '''
         from cycler import cycler
-        
+
         fig,ax = plt.subplots(1,1)
         if isinstance(g,list):
-            colours = [[plt.cm.Blues(i) for i in np.linspace(0,0.7,len(g))],
-                       [plt.cm.Greens(i) for i in np.linspace(0,0.7,len(g))]]
+            colours = [[plt.cm.Blues_r(i) for i in np.linspace(0,0.8,len(g))],
+                       [plt.cm.Greens_r(i) for i in np.linspace(0,0.8,len(g))]]
             for i_g,g_in in enumerate(g):
                 self.subfig_brightness_bw(ax,g_in,'seed '+str(g_in.parameters['ipseed']),colours[0][i_g],colours[1][i_g])
         else:
@@ -953,4 +1000,3 @@ class FEL_simulation_block(object):
             plt.savefig(self.file_pout+'brightness_bw.png',dpi=1200,format='png')
         if showfig:
             plt.show()
-                
