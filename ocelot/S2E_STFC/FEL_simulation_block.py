@@ -17,6 +17,12 @@ HMCC  01-03-19: Setting ffspec to -1 by default (for the purposes of BW smoothne
                 where to look at the pulse properties (plotting) within the undulator.
 HMCC: 04-03-19 Add method to plot brightness and BW (arguments: array of output objects)
 HMCC: 29-03-19 Using the definition of brightness in the method to calculate it.
+HMCC: 10-04-19 Fixing the reading routine in order to include the &new and &end statements
+               in.
+HMCC: 10-04-19 Reimplementation of the brightness in terms of the divergence and
+                beam waist of the optical beam and the divergence and beam size of
+                the electron beam.
+HMCC: 18-04-19 Fix bug that doesn't allow to read wcoefz array from the input file.
 '''
 #################################################
 ### import of all modules that are required.
@@ -30,6 +36,7 @@ from ocelot.optics.elements import Filter_freq
 from ocelot.adaptors.genesis import *
 from ocelot.common import globals
 from ocelot.common.math_op import *
+from ocelot.rad.fel import *
 from ocelot.adaptors.genesis import generate_input,generate_lattice,get_genesis_launcher,run_genesis,filename_from_path, read_edist_file
 from ocelot.gui.genesis_plot import plot_gen_out_all,plot_gen_stat
 import ocelot.cpbd.elements
@@ -114,9 +121,9 @@ class FEL_simulation_block(object):
                     splitLine[-1] = splitLine[-1].replace('E+','e').replace('E-','e-').replace('\n','').replace('\r','').rstrip()
                     if(splitLine[0][:].endswith('file') and splitLine[0][:].startswith('mag')):
                         val_attr = str(splitLine[-1])
-                    elif (splitLine[0].startswith('$n')) or (splitLine[0].find('filetype')!=-1) or (splitLine[0].find('distfile')!=-1) or (splitLine[0].find('beamfile')!=-1):
+                    elif  (splitLine[0].startswith('&n')) or (splitLine[0].startswith('$n')) or (splitLine[0].find('filetype')!=-1) or (splitLine[0].find('distfile')!=-1) or (splitLine[0].find('beamfile')!=-1):
                         continue
-                    elif(splitLine[0].startswith('$end')):
+                    elif(splitLine[0].startswith('$end') or splitLine[0].startswith('&end') ):
                         break
                     elif ((str(splitLine[0]).startswith('i') and not str(splitLine[0])=='ibfield' and not str(splitLine[0])=='imagl') or str(splitLine[0])=='itdp' or str(splitLine[0]).startswith('n')
                           or str(splitLine[0]).startswith('lbc') or str(splitLine[0]).startswith('magin') or str(splitLine[0]).startswith('magout')
@@ -136,7 +143,7 @@ class FEL_simulation_block(object):
                     elif (splitLine[0].startswith('outputfile')):
                         continue
                     elif (splitLine[0].startswith('wcoefz')):
-                        val_attr = [float(splitLine[-1][2:].rsplit(' ')[i]) for i in range(0,7,3)]
+                        val_attr = [float(x) for x in splitLine[-1][2:].rsplit(' ') if x]
                     elif (splitLine[0].startswith('lout')):
                         val_attr = [int(float(l_out)) for l_out in splitLine[-1][1:].rsplit(' ')]
                     elif(splitLine[0].startswith('alpha')):
@@ -213,7 +220,7 @@ class FEL_simulation_block(object):
        # Creating the cell
 
         extra_fodo = (und,d_rift,qdh)
-        if i_fs ==0:
+        if i_fs ==0 or f1st == fl+drl:
             cell_ps = (und,d_rift, qd, d_rift2,und, d_rift,qf,d_rift2)
         else:
             cell_ps = (und,d_rift, qf, d_rift2,und, d_rift,qd,d_rift2)
@@ -224,6 +231,8 @@ class FEL_simulation_block(object):
             sase3=  MagneticLattice(np.rint(nsec/2)*cell_ps) # Lattice with nsec modules
         elif f1st ==0 and nsec ==1:
             sase3=  MagneticLattice(cell_ps) # Lattice with nsec modules
+        elif f1st ==fl+drl and nsec >1:
+            sase3 = MagneticLattice(np.rint(nsec/2)*cell_ps)
         up = UndulatorParameters(und,E_beam) # Instance of the Class UndulatorParameters
         print('++++ Undulator Parameters +++')
         up.printParameters()
@@ -259,7 +268,6 @@ class FEL_simulation_block(object):
 
          Outputs: inp : Input object with the corrected twiss parameter values.
         '''
-        file
         import os
         import shutil
         from ocelot.adaptors.genesis import filename_from_path
@@ -460,6 +468,7 @@ class FEL_simulation_block(object):
             #setattr(inp,'magin',1)
             #if self.parameter !='aw0':
             inp = self.beta_matching(inp,inp.run_dir)
+
             if inp.edist!=None:
                 inp0=inp
                 for i_tw in getattr(self,'tw_match'):
@@ -694,13 +703,14 @@ class FEL_simulation_block(object):
             self.gen_outplot_single(run_inp= s_scan_inp, itdp = False,savefig=True)
         plt.close("all")
 
-    def GEN_simul_preproc(self,A_input,i_aft=0,i_fs=0):
+    def GEN_simul_preproc(self,A_input,i_aft=0,i_fs=0,i_br=1):
         '''
         GENESIS simulation. Uses the Launcher and the attributes of the FEL_simulation_block class
 
         Inputs: A_input. Input object
                 i_aft: After burner flag
                 i_fs: Fresh slice flag
+                i_br: Brightness flag (dumps the source spot size and the divergence to calculate the brightness)
         Outputs: out_arr List of output objects of the simulation
         '''
         if not self.file_pout.endswith('/'):
@@ -793,7 +803,6 @@ class FEL_simulation_block(object):
         else:
             print('++++ No edist or beam or dpa or rad file available ++++++')
 
-
         # Read ASTRA file.
         if hasattr(self,'i_astra') and getattr(self,'i_astra')==1 and hasattr(self,'astra_file'):
             inp=self.convert_ASTRA_edist(inp)
@@ -840,7 +849,8 @@ class FEL_simulation_block(object):
         for i_nscan , n_par in enumerate(s_scan):
             for run_id in run_ids:
                 inp.runid = run_id
-                #inp.lout =  [1,1,1,1,1,0,1,1,1,1,1,0,0,1,0,0,0,0,0]
+                if i_br==1:
+                    inp.lout =  [1,1,1,1,1,1,1,1,1,1,1,0,0,1,0,0,0,0,0]
                 if ((self.stat_run==1) or (self.i_scan==1)):
                     setattr(inp,'ipseed',-1)
                 else:
@@ -877,6 +887,9 @@ class FEL_simulation_block(object):
                 elif self.i_scan!=0 and inp.f1st ==0 and A_input.latticefile ==None:
                     inp.lat =None
                     setattr(inp,'magin',0)
+                elif self.i_scan!=0 and inp.f1st ==A_input.fl+A_input.drl and A_input.latticefile ==None:
+                    inp.lat =None
+                    setattr(inp,'magin',0)
                 if inp.wcoefz[2]!= 0 :
                     inp.lat =None
                     inp.magin =0
@@ -885,7 +898,10 @@ class FEL_simulation_block(object):
 
                 g = run_genesis(inp,launcher,i_aft=i_aft)
                 setattr(g,'filePath',str(inp.run_dir))
-                out_arr.append(g)
+                if i_fs==0:
+                    out_arr.append(g)
+                else:
+                    out_arr.append(inp)
                 if (inp.itdp==1):
                     plot_gen_out_all(handle=g, savefig=True, showfig=False, choice=(1, 1, 1, 1, self.zd, 0, 0, 0, 0, 0, 0, 0, 0), vartype_dfl=complex128, debug=1)
 
@@ -895,10 +911,11 @@ class FEL_simulation_block(object):
                 inp.beamfile=None
                 inp.fieldfile=None
                 inp.radfile=None
+                inp.partfile=None
 
         print('++++ postprocessing (results saved in {0}results++++'.format(self.file_pout))
         if i_aft!='xls':
-            self.post_processing(inp,s_scan)
+          self.post_processing(inp,s_scan)
         plt.close("all")
         return out_arr
 
@@ -925,23 +942,30 @@ class FEL_simulation_block(object):
             if g.parameters[key][0].find('D')!= -1 or g.parameters[key][0].find('D') != -1:
                 apar.append(float(g.parameters[key][0].replace('D','e')))
                 apar_int.append(float(g.parameters[key2][0].replace('D+','')))
-        sigmar = np.array([np.sqrt(apar[3]*z_in)/(4.0*np.pi) for z_in in g.z])
-        sigmarp = np.array([np.sqrt(apar[3]/z_in) for z_in in g.z])
+        
         divx=np.array([apar[0]/(apar[5]*rmsx) for rmsx in np.array(np.amax(g.xrms,axis=0))])
         divy=np.array([apar[1]/(apar[5]*rmsy) for rmsy in np.array(np.amax(g.yrms,axis=0))])
-        sigma_xx = 1e6*np.sqrt(np.array([np.square(rmsx) + np.square(sigmarr) for rmsx,sigmarr in zip(np.amax(g.xrms,axis=0),sigmar)]))
-        sigma_yy = 1e6*np.sqrt(np.array([np.square(rmsy) + np.square(sigmarr) for rmsy,sigmarr in zip(np.amax(g.yrms,axis=0),sigmar)]))
-        sigma_xpr=np.sqrt(np.array([np.square(divvx) + np.square(sigmarrp) for divvx,sigmarrp in zip(divx,sigmarp)]))
-        sigma_ypr=np.sqrt(np.array([np.square(divvy) + np.square(sigmarrp) for divvy,sigmarrp in zip(divx,sigmarp)]))
+        
+        sigma_xx = 1e6*np.sqrt(np.array([np.square(rmsx) + np.square(sigmarr) \
+            for rmsx,sigmarr in zip(np.amax(g.xrms,axis=0),np.amax(g.r_size,axis=0))]))
+        sigma_yy = 1e6*np.sqrt(np.array([np.square(rmsy) + np.square(sigmarr) \
+            for rmsy,sigmarr in zip(np.amax(g.yrms,axis=0),np.amax(g.r_size,axis=0))]))
+        sigma_xpr=np.sqrt(np.array([np.square(divvx) + np.square(sigmarrp) \
+            for divvx,sigmarrp in zip(divx,np.amax(g.angle,axis=0))]))
+        sigma_ypr=np.sqrt(np.array([np.square(divvy) + np.square(sigmarrp) \
+            for divvy,sigmarrp in zip(divy,np.amax(g.angle,axis=0))]))
+        
         brightness,bw_std = get_brightness_bandwidth(g)
         photon_flux = np.array([psat*apar[3]/(10*bw_std[iph]*h_J_s*speed_of_light) \
-                              for iph,psat in enumerate(np.amax(g.p_int,axis=0))])
+                              for iph,psat in enumerate(np.average(g.p_int,axis=0))])
+
+
         #brightness_2 = np.array([1e-12*photon_f/np.square(apar[3]) for  photon_f in photon_flux])
         brightness_2 = np.array([photon_flux[i]/(4*np.square(np.pi)*sigma_xx[i]*sigma_yy[i]*sigma_xpr[i]*sigma_ypr[i])\
                                  for i in np.arange(g.z.shape[0])])
         return {'z':np.array(g.z),'brightness':brightness_2,'bw_std':np.array(bw_std)}
 
-    def subfig_brightness_bw(self,ax_bw, g, legend,colour1,colour2):
+    def subfig_brightness_bw(self,ax_bw, g,legend,colour1,colour2):
         '''
             Method to create a subplot with the brightness and the bandwidth as
             a function of z. It uses the dictionary which is the output of the
@@ -970,8 +994,8 @@ class FEL_simulation_block(object):
         ax_br.yaxis.label.set_color('darkgreen')
         ax_br.grid(False)
         ax_br.set_ylim([0.99*np.amin(bw_dict['brightness']),1.01*np.amax(bw_dict['brightness'])])
+        ax_bw.set_ylim([0.99*np.amin(bw_dict['bw_std']),1.01*np.amax(bw_dict['bw_std'])])
         ax_bw.set_xlabel(r'z[m]',color='navy',fontsize=10)
-        plt.yticks(plt.yticks()[0][0:-1])
 
     def brightness_plot(self,g,savefig=True,showfig=True):
         '''

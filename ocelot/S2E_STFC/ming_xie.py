@@ -267,9 +267,6 @@ class MingXie(object):
         q_t = np.trapz(beam_p.I,x= np.array(beam_p.z)/speed_of_light)
         #fact_den = q_t/(nl_wv)
         return int(np.floor(curp*self.binwidth/(q_e*speed_of_light)))
-        #return np.floor(curp/(speed_of_light*fact_den))
-        ##return np.floor(curp*(beam_p.z[sl] /speed_of_light)/q_e)
-        ##return np.floor(curp*self.binwidth/(speed_of_light*q_e))
 
     def slice_eta(self, sl):
         beam_p = getattr(self, 'beam')
@@ -310,7 +307,7 @@ class MingXie(object):
         gamma = beam_p.g0[sl]
         eta =  self.slice_eta(sl)
         eta_z = self.slice_eta_z(sl)
-        return 1.6e6 * self.slice_rho(sl) * (np.square(1.0 / ((1.0+eta_z)*(1.0 + eta)))) * curpeak * (gamma * m_e_MeV)
+        return 1.6e6 * self.slice_rho(sl) * (np.square(1.0 / ((1.0)*(1.0 + eta)))) * curpeak * (gamma * m_e_MeV)
 
     def slice_p_noise(self, sl):
         beam_p = self.beam
@@ -321,7 +318,7 @@ class MingXie(object):
     def slice_gain_length(self, sl):
         lbd_u = float(getattr(self, 'lambdu'))
         eta_z = self.slice_eta_z(sl)
-        return float((lbd_u*(1.0+eta_z) * (1.0 + self.slice_eta(sl)))/ (4.0 * np.pi * np.sqrt(3.0) * self.slice_rho(sl)))
+        return float((lbd_u*(1.0) * (1.0 + self.slice_eta(sl)))/ (4.0 * np.pi * np.sqrt(3.0) * self.slice_rho(sl)))
 
     def slice_coop_length(self, sl):
         lbd_u = float(getattr(self, 'lambdu'))
@@ -346,6 +343,7 @@ class MingXie(object):
         yrms = np.sqrt(betay*ey)
         sigma = float((xrms+yrms)/2.0)
         p_sat= self.slice_p_sat(sl)
+        Nc = cur_peak/(q_e*self.slice_rho(sl)*(2.0*np.pi*speed_of_light/self.wavelength))
         if self.i_gen==0:
             fc = 1
         else:
@@ -356,15 +354,17 @@ class MingXie(object):
         rho_scale =np.cbrt(D_par)*self.slice_rho(sl)
         transv_coh_x = 1.1*np.power(ex_scale,0.25)/(1.0+(0.15*np.power(ex_scale,float(9.0/4.0))))
         transv_coh_y = 1.1*np.power(ey_scale,0.25)/(1.0+(0.15*np.power(ex_scale,float(9.0/4.0))))
-        coh_time = (getattr(self,'wavelength')/(2.0*np.pi*speed_of_light*rho_scale))*np.sqrt(np.pi*np.log(self.wavelength*cur_peak/(2.0*np.pi*rho_scale*q_e*speed_of_light)))
+        #coh_time = (getattr(self,'wavelength')/(2.0*np.pi*speed_of_light*rho_scale))*np.sqrt(np.pi*np.log(self.wavelength*cur_peak/(2.0*np.pi*rho_scale*q_e*speed_of_light)))
+        coh_time = 1./(self.slice_rho(sl)*(2.0*np.pi*speed_of_light/self.wavelength))*np.sqrt(np.pi*np.log(Nc)/18)
         photon_flux = p_sat/(h_J_s*speed_of_light/self.wavelength)
+        
         #photon_flux = 2.0*p_sat*coh_time*np.sqrt(np.pi)/h_J_s
         delta_x_par = photon_flux*coh_time*transv_coh_x
         delta_y_par = photon_flux*coh_time*transv_coh_y
         delta_x_hat = delta_x_par*(0.34*np.pi*speed_of_light/self.wavelength)*(rho_scale*ex_scale)/(photon_flux)
         delta_y_hat = delta_y_par*(0.34*np.pi*speed_of_light/self.wavelength)*(rho_scale*ey_scale)/(photon_flux)
-        return 4.0e-12*np.sqrt(2)*speed_of_light*delta_x_par/(np.power(getattr(self,'wavelength'),3)),\
-            4.0e-12*np.sqrt(2)*speed_of_light*delta_y_par/(np.power(getattr(self,'wavelength'),3))
+        return 4.0e-15*np.sqrt(2)*speed_of_light*delta_x_par/(np.power(getattr(self,'wavelength'),3)),\
+            4.0e-15*np.sqrt(2)*speed_of_light*delta_y_par/(np.power(getattr(self,'wavelength'),3))
 
     def calculate_brightness_over_lsat(self):
         br_lsat_x= []
@@ -397,41 +397,45 @@ class MingXie(object):
         beam_z = getattr(self,'beam')
         setattr(self,'outplot',filename)
         fig , ax_mxie= plt.subplots(2,2,squeeze=False)
+        fig.set_figheight(10)
+        fig.setfigwidth(10)
         ln1 = ax_mxie[0,0].plot(z,1e6*p_energ,color='navy')
         ax_mxie[0,0].scatter(z, 1e6 * p_energ, color='navy')
         ax_mxie[0,0].set_ylabel(r'E$_{pulse}$[$\mu$J]',color='navy')
         ax_mxie[0,0].set_xlabel(r'z[m]')
         ax_mxie[0,0].grid(True)
         for ticks in ax_mxie[0,0].xaxis.get_major_ticks():
-            ticks.label.set_fontsize(8)
+            ticks.label.set_fontsize('large')
         for ticks in ax_mxie[0,0].yaxis.get_major_ticks():
-            ticks.label.set_fontsize(8)
-        ax_mxie[0,0].yaxis.get_offset_text().set_fontsize('xx-small')
+            ticks.label.set_fontsize('large')
+        ax_mxie[0,0].yaxis.get_offset_text().set_fontsize('medium')
         ax_mxie[0,0].set_ylim(ymin=0.95e6*np.amin(p_energ),ymax=1.01e6*np.amax(p_energ))
 
         ln01 = ax_mxie[0,1].plot(1e6*np.array(beam_z.z),getattr(self,'rho'),'--', color = 'forestgreen')
         ax_mxie[0,1].set_xlabel(r's[$\mu$m]')
         ax_mxie[0,1].set_ylabel(r'$\rho$',color='forestgreen')
         ax_mxie[0,1].tick_params(axis='y',which='both',color='forestgreen',labelcolor = 'forestgreen')
+        ax_mxie[0,1].tick_labelformat(axis='y',style='sci',scilimits=(0,0))
         ax_mxie[0,1].set_ylim(ymin=0.95*np.amin(self.rho),ymax=1.01*np.amax(self.rho))
-        ax_mxie[0,1].yaxis.offsetText.set_fontsize(8)
+        ax_mxie[0,1].yaxis.get_offset_text().set_fontsize('medium')
+        ax_mxie[0,1].yaxis.get_offset_text().set_color('forestgreen')
         ax_gl = ax_mxie[0,1].twinx()
         ln02 = ax_gl.plot(1e6*np.array(beam_z.z),getattr(self,'glength'),'-.',color='orangered')
         ax_gl.set_ylabel(r'L$_g$[m]',color='orangered')
         ax_gl.tick_params(axis='y', which='both',color='orangered',labelcolor='orangered')
         for ticks in ax_mxie[0,1].xaxis.get_majorticklabels():
-            ticks.set_fontsize(8)
+            ticks.set_fontsize('large')
         for ticks in ax_mxie[0,1].yaxis.get_majorticklabels():
-            ticks.set_fontsize(8)
+            ticks.set_fontsize('large')
         for ticks in ax_gl.yaxis.get_majorticklabels():
-            ticks.set_fontsize(8)
-        ax_gl.yaxis.offsetText.set_fontsize(8)
+            ticks.set_fontsize('large')
+        ax_gl.yaxis.offsetText.set_fontsize('medium')
         ax_gl.set_ylim(ymin=0.7*np.amin(self.glength),ymax=2*np.amin(self.glength))
 
-        ax_mxie[1,0].plot(1e6*np.array(beam_z.z),p_noise,'--',color='brown')
-        ax_mxie[1,0].scatter(1e6*np.array(beam_z.z),p_noise,color='brown')
+        ax_mxie[1,0].plot(1e6*np.array(beam_z.z),1e-9*p_noise,'--',color='brown')
+        ax_mxie[1,0].scatter(1e6*np.array(beam_z.z),1e-9*p_noise,color='brown')
         ax_mxie[1,0].set_xlabel(r's[$\mu$m]')
-        ax_mxie[1,0].set_ylabel(r'P$_{saturation}$[W]', color='brown')
+        ax_mxie[1,0].set_ylabel(r'P$_{saturation}$[GW]', color='brown')
         ax_mxie[1,0].tick_params(axis='both',which='both', color='brown',labelcolor='brown')
         for ticks in ax_mxie[1,0].xaxis.get_major_ticks():
             ticks.label.set_fontsize(8)
@@ -439,37 +443,29 @@ class MingXie(object):
             ticks.label.set_fontsize(8)
         ax_mxie[1,0].yaxis.offsetText.set_fontsize(8)
         ax_mxie[1,0].set_ylim(ymin=0.95*np.amin(p_noise),ymax=1.01*np.amax(p_noise))
-
-        ax_mxie[1,1].semilogy(1e6*np.array(beam_z.z),self.clength,'--',color='navy')
-        #ax_mxie[1,1].scatter(1e6*np.array(beam_z.z),self.clength,color='navy')
+        ax_mxie[1,0].grid(True,color='maroon')
+        ax_mxie[1,1].plot(1e6*np.array(beam_z.z),1e6*self.clength,'--',color='navy')
         ax_mxie[1,1].set_ylabel(r'L$_{cooperation}[\mu$m$]$',color='navy')
         ax_mxie[1,1].tick_params(axis='y', which='both',labelcolor='navy',color='navy')
         ax_mxie[1,1].set_xlabel(r's[$\mu$m]')
         for ticks in ax_mxie[1,1].xaxis.get_major_ticks():
-            ticks.label.set_fontsize('xx-small')
+            ticks.label.set_fontsize('large')
         for ticks in ax_mxie[1,1].yaxis.get_major_ticks():
-            ticks.label.set_fontsize('xx-small')
+            ticks.label.set_fontsize('large')
         #ax_mxie[1,1].ticklabel_format(style='sci',axis='y',scilimits=(0,0))
-        ax_mxie[1,1].xaxis.get_offset_text().set_fontsize('xx-small')
-        ax_mxie[1,1].yaxis.get_offset_text().set_fontsize('xx-small')
+        ax_mxie[1,1].xaxis.get_offset_text().set_fontsize('medium')
+        ax_mxie[1,1].yaxis.get_offset_text().set_fontsize('medium')
         ax_mxie[1,1].set_xlim(0,1.01e6*np.amax(np.array(beam_z.z)))
         ax_lsat = ax_mxie[1,1].twinx()
         ln_n = ax_lsat.plot(1e6*np.array(beam_z.z),getattr(self,'lsat'),'-.',color='orchid')
         ax_lsat.scatter(1e6*np.array(beam_z.z),self.lsat,color='orchid')
         for ticks in ax_lsat.yaxis.get_major_ticks():
-            ticks.label.set_fontsize('xx-small')
+            ticks.label.set_fontsize('large')
         for ticks in ax_lsat.xaxis.get_major_ticks():
-            ticks.label.set_fontsize('xx-small')
+            ticks.label.set_fontsize('large')
         ax_lsat.set_ylabel(r'L$_{sat}$[m]',color='orchid')
-        ax_lsat.tick_params(axis='y',which='both',color='orchid', labelcolor='orchid',labelsize='xx-small')
-        #ax_lsat.yaxis.get_offset_text().set_fontsize('xx-small')
-        #ax_lsat.ticklabel_format(style='sci',axis='y',scilimits=(0,0))
-        #ax_lsat.xaxis.get_offset_text().set_fontsize('xx-small')
-        #ax_lsat.yaxis.get_offset_text().set_fontsize('xx-small')
+        ax_lsat.tick_params(axis='y',which='both',color='orchid', labelcolor='orchid',labelsize='large')
         ax_lsat.set_ylim(ymin=0.7*np.amin(self.lsat),ymax=2*np.amin(self.lsat))
-
-        #fig.suptitle('Ming-Xie estimation of the radiation properties.',\
-        #color='darkred',fontsize='x-small',x=0.5,y=0.97)
         plt.tight_layout()
         fig.savefig(filename,format='png',dpi=1200)
         return fig

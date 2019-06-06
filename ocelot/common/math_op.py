@@ -166,7 +166,7 @@ def stats(outputs):
     return omean , std, outputs[imed], outputs[iworst], imed, iworst
 
 
-def find_saturation(power, z, n_smooth=5):
+def find_saturation(power, z, z_max, n_smooth=5):
     p = np.diff(np.log10(power))
 
     u = np.convolve(p, np.ones(n_smooth) / float(n_smooth), mode='same')
@@ -175,7 +175,7 @@ def find_saturation(power, z, n_smooth=5):
     ii = 0
 
     for i in range(len(u)):
-        if u[i] < 0.0 * um and z[i] > 10:
+        if u[i] < 0.0 * um and z[i] > z_max:
             ii = i
             break
 

@@ -178,7 +178,8 @@ def calc_stokes(Ex,Ey,s=None):
     
 def average_stokes_l(S,sc_range=None):
     
-    if type(S) != StokesParameters:
+    #if type(S) != StokesParameters:
+    if not isinstance(S,StokesParameters): #HMCC
         raise ValueError('Not a StokesParameters object')
     
     if sc_range is None:
@@ -200,7 +201,8 @@ def average_stokes_l(S,sc_range=None):
     
 def sum_stokes_tr(S):
     
-    if type(S) != StokesParameters:
+    #if type(S) != StokesParameters:
+    if not isinstance(S,StokesParameters): #HMCC
         raise ValueError('Not a StokesParameters object')
     if S.s0.ndim == 1:
         return S
