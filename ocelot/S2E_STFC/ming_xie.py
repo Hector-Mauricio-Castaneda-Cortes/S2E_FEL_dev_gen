@@ -357,7 +357,7 @@ class MingXie(object):
         #coh_time = (getattr(self,'wavelength')/(2.0*np.pi*speed_of_light*rho_scale))*np.sqrt(np.pi*np.log(self.wavelength*cur_peak/(2.0*np.pi*rho_scale*q_e*speed_of_light)))
         coh_time = 1./(self.slice_rho(sl)*(2.0*np.pi*speed_of_light/self.wavelength))*np.sqrt(np.pi*np.log(Nc)/18)
         photon_flux = p_sat/(h_J_s*speed_of_light/self.wavelength)
-        
+
         #photon_flux = 2.0*p_sat*coh_time*np.sqrt(np.pi)/h_J_s
         delta_x_par = photon_flux*coh_time*transv_coh_x
         delta_y_par = photon_flux*coh_time*transv_coh_y
@@ -398,7 +398,7 @@ class MingXie(object):
         setattr(self,'outplot',filename)
         fig , ax_mxie= plt.subplots(2,2,squeeze=False)
         fig.set_figheight(10)
-        fig.setfigwidth(10)
+        fig.set_figwidth(10)
         ln1 = ax_mxie[0,0].plot(z,1e6*p_energ,color='navy')
         ax_mxie[0,0].scatter(z, 1e6 * p_energ, color='navy')
         ax_mxie[0,0].set_ylabel(r'E$_{pulse}$[$\mu$J]',color='navy')
