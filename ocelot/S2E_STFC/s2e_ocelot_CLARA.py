@@ -22,11 +22,11 @@ class s2e_afterburner(FEL_simulation_block):
     def __init__(self,*initial_data,**kwargs):
         super(s2e_afterburner,self).__init__(*initial_data,**kwargs)
         self.__seedlambda = 3e-6
-        self.__outlambda = 1e-7
-        self.__nslice = 3e3
+        self.__outlambda = 9.8e-8
+        self.__nslice = 1120
         self.__npart = 2048
-        self.__gamma = 490.2
-        self.__modules = 10
+        self.__gamma = 469.66
+        self.__modules = 12
         self.__offsetradf=-16
         self.__nslicemod = 200
         self.__zsepmod = 1
@@ -151,7 +151,8 @@ class s2e_afterburner(FEL_simulation_block):
         return inp   
     
     def prep_mod_amp_aft(self, path_mod,inp):
-        inp0=inp
+        inp0=inp  
+        setattr(inp0,'xlamds',getattr(self,'outlambda'))
         f_out = read_out_file(self.search_input(path_mod,'.gout'))
         dpa_f = read_dpa_file_out(f_out)
         setattr(dpa_f,'filePath',path_mod+'mod'+'_dpa') 
@@ -160,8 +161,8 @@ class s2e_afterburner(FEL_simulation_block):
         #ebeam = edist2beam(edist_dpa,step=float(self.outlambda),i_aft=1)
         #setattr(ebeam,'filePath',path_mod+'mod'+'_beam') 
         setattr(edist_dpa,'filePath',path_mod+'mod'+'_edist') 
-        plot_edist(edist_dpa,figsize=20,savefig=True,showfig=False,scatter=True,plot_x_y=True,plot_xy_s=False) 
-        plot_edist(edist_dpa,figsize=20,savefig=True,showfig=False,scatter=True,plot_x_y=False,plot_xy_s=True)
+        plot_edist(edist_dpa,figsize=20,savefig=True,showfig=False,scatter=True,plot_x_y=True,plot_xy_s=False,bins=(250,250,250,250)) 
+        plot_edist(edist_dpa,figsize=20,savefig=True,showfig=False,scatter=True,plot_x_y=False,plot_xy_s=True,bins=(250,250,250,250))
         plot_dpa_bucket(dpa_f, slice_num=None, repeat=1, GeV=0, figsize=4, cmap=def_cmap, scatter=False,
                         energy_mean=None, legend=True, fig_name=None, savefig=True, showfig=False, suffix='mod',
                         bins=(f_out('nbins'),f_out('nbins')), debug=1, return_mode_gamma=0)
@@ -200,9 +201,13 @@ class s2e_afterburner(FEL_simulation_block):
             f_inp = super(s2e_afterburner,self).read_GEN_input_file()
             setattr(self,'idump',1)
             if i_f_mamp =='mod': 
+                aw0 = np.sqrt(float((2.0*np.square(self.gamma)*getattr(f_inp,'xlamds')/(getattr(f_inp,'xlamd')))-1.0))
                 setattr(f_inp,'ippart',int(1))
                 setattr(f_inp,'ispart',int(1))
                 setattr(f_inp,'idmppar',int(1))
+                setattr(f_inp,'gamma0',getattr(self,'gamma'))
+                setattr(f_inp,'aw0',aw0)
+                setattr(f_inp,'awd',aw0)
                 f_inp2 = super(s2e_afterburner,self).GEN_simul_preproc(f_inp) 
                 f_out = read_out_file(self.search_input(f_inp2[0].run_dir,'.gout'))
                 f_out.filePath = self.search_input(f_inp2[0].run_dir,'.gout')
@@ -221,6 +226,8 @@ class s2e_afterburner(FEL_simulation_block):
                 setattr(f_inp2,'beam',edist2beam(rematch_edist(getattr(f_inp2,'edist'),tw),step=float(self.outlambda),i_aft=1))
                 setattr(f_inp2.beam,'filePath',f_old+'mod/scan_0/ip_seed_-1/'+'mod'+'_beam')
                 setattr(f_inp2,'edist',None)
+                setattr(f_inp2,'i_rewrite',1)
+                setattr(f_inp2,'par_rew',{'ntail':0}) 
                 f_inp0 = self.GEN_simul_preproc(f_inp2)
                 f_inpamp = f_inp0[0]
                 setattr(f_inpamp,'beam',None)
@@ -255,10 +262,10 @@ class s2e_afterburner(FEL_simulation_block):
             fold = getattr(self,'file_pout')+'scan_0/ip_seed_-1/'
             setattr(self,'file_pout',fout_old+'afterburner/n_mod'+str(n_mod)+'/')  
             if  (n_mod<(self,'modules')):
-                if np.remainder(n_mod,16)==0:
+                if np.remainder(n_mod,6)==0:
                     base_n = 'odd'
                 else:
-                    if np.remainder(n_mod,8)==0:
+                    if np.remainder(n_mod,3)==0:
                         base_n = 'even'
                     else:
                         base_n = 'noquad'

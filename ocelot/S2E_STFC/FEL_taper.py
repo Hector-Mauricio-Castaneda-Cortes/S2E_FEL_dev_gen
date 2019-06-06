@@ -164,7 +164,8 @@ class FEL_taper(FEL_simulation_block):
                 g = run_genesis(a_inp2, launcher)
                 setattr(g, 'filePath', str(a_inp2.run_dir))
                 inp_arr.append(g)
-                if a_inp2.itdp == 1 and self.i_taper == 0:
+                #if a_inp2.itdp == 1 and self.i_taper == 0:
+                if  a_inp2.itdp == 1:
                     plot_gen_out_all(handle=g, savefig=True, showfig=False,
                                      choice=(1, 1, 1, 1, 3.05, 1, 0, 0, 0, 0, 0, 1, 1), vartype_dfl=complex128,
                                      debug=1)
