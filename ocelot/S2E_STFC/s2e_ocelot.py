@@ -18,7 +18,7 @@ from copy import copy,deepcopy
 
 
 class s2e_afterburner(FEL_simulation_block):
-    __pathgf = '/home/qfi29231/riley_S2E/update_CLARA_design_ab/'
+    __pathgf = '/home/qfi29231/riley_S2E/'
     def __init__(self,*initial_data,**kwargs):
         super(s2e_afterburner,self).__init__(*initial_data,**kwargs)
         self.__seedlambda = 3e-6

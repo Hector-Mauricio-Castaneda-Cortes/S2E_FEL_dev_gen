@@ -398,7 +398,7 @@ class MingXie(object):
         setattr(self,'outplot',filename)
         fig , ax_mxie= plt.subplots(2,2,squeeze=False)
         fig.set_figheight(10)
-        fig.set_figwidth(10)
+        fig.setfigwidth(10)
         ln1 = ax_mxie[0,0].plot(z,1e6*p_energ,color='navy')
         ax_mxie[0,0].scatter(z, 1e6 * p_energ, color='navy')
         ax_mxie[0,0].set_ylabel(r'E$_{pulse}$[$\mu$J]',color='navy')
