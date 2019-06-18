@@ -233,6 +233,8 @@ class FEL_simulation_block(object):
             sase3=  MagneticLattice(cell_ps) # Lattice with nsec modules
         elif f1st ==fl+drl and nsec >1:
             sase3 = MagneticLattice(np.rint(nsec/2)*cell_ps)
+        else:
+            sase3 = MagneticLattice(int(np.rint(nsec/2))*cell_ps)
         up = UndulatorParameters(und,E_beam) # Instance of the Class UndulatorParameters
         print('++++ Undulator Parameters +++')
         up.printParameters()
@@ -942,10 +944,10 @@ class FEL_simulation_block(object):
             if g.parameters[key][0].find('D')!= -1 or g.parameters[key][0].find('D') != -1:
                 apar.append(float(g.parameters[key][0].replace('D','e')))
                 apar_int.append(float(g.parameters[key2][0].replace('D+','')))
-        
+
         divx=np.array([apar[0]/(apar[5]*rmsx) for rmsx in np.array(np.amax(g.xrms,axis=0))])
         divy=np.array([apar[1]/(apar[5]*rmsy) for rmsy in np.array(np.amax(g.yrms,axis=0))])
-        
+
         sigma_xx = 1e6*np.sqrt(np.array([np.square(rmsx) + np.square(sigmarr) \
             for rmsx,sigmarr in zip(np.amax(g.xrms,axis=0),np.amax(g.r_size,axis=0))]))
         sigma_yy = 1e6*np.sqrt(np.array([np.square(rmsy) + np.square(sigmarr) \
@@ -954,7 +956,7 @@ class FEL_simulation_block(object):
             for divvx,sigmarrp in zip(divx,np.amax(g.angle,axis=0))]))
         sigma_ypr=np.sqrt(np.array([np.square(divvy) + np.square(sigmarrp) \
             for divvy,sigmarrp in zip(divy,np.amax(g.angle,axis=0))]))
-        
+
         brightness,bw_std = get_brightness_bandwidth(g)
         photon_flux = np.array([psat*apar[3]/(10*bw_std[iph]*h_J_s*speed_of_light) \
                               for iph,psat in enumerate(np.average(g.p_int,axis=0))])
