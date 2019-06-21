@@ -252,12 +252,21 @@ class MingXie(object):
         xrms = np.sqrt(betax*ex)
         yrms = np.sqrt(betay*ey)
         sigma = float((xrms+yrms)/2.0)
+
         if self.i_gen==0:
-            fc = 1
+            A_Wf = self.K;
         else:
-            a= np.square(self.K)/(2.0*(1.0+np.square(self.K)))
-            fc = sf.j0(a)-sf.j1(a)
-        return np.cbrt(float(cur_peak/self.curra)*np.square(lmd_u*self.K*fc/(2*np.pi*sigma))*np.power(1.0/(2.0*gamma),3))
+            zeta = np.square(self.K)/(1.0+np.square(self.K))/2.0;
+            A_Wf = (sf.j0(zeta)-sf.j1(zeta))*self.K*np.sqrt(2.0);
+
+#        if self.i_gen==0:
+#            fc = 1
+#        else:
+#            a= np.square(self.K)/(2.0*(2.0+np.square(self.K)))
+#            fc = sf.j0(a)-sf.j1(a)
+        return np.cbrt((cur_peak/self.curra)*np.square(lmd_u*A_Wf/(8.0*pi*sigma)))/gamma
+
+        #return np.cbrt(float(cur_peak/self.curra)*np.square(lmd_u*self.K*fc/(2*np.pi*sigma))*np.power(1.0/(2.0*gamma),3))
 
     def slice_npart(self,sl):
         beam_p = getattr(self, 'beam')
@@ -344,12 +353,19 @@ class MingXie(object):
         sigma = float((xrms+yrms)/2.0)
         p_sat= self.slice_p_sat(sl)
         Nc = cur_peak/(q_e*self.slice_rho(sl)*(2.0*np.pi*speed_of_light/self.wavelength))
+
         if self.i_gen==0:
-            fc = 1
+            A_Wf = self.K
         else:
-            a= np.square(self.K)/(2.0*(2.0+np.square(self.K)))
-            fc = sf.j0(a)-sf.j1(a)
-        gain_par =  np.sqrt(8*cur_peak*np.square(np.pi*self.K*fc)/(self.curra*self.wavelength*lmd_u*np.power(gamma,3)))
+            zeta = np.square(self.K)/(1.0+np.square(self.K))/2.0
+            A_Wf = (sf.j0(zeta)-sf.j1(zeta))*self.K*np.sqrt(2.0)
+
+        #if self.i_gen==0:
+        #    fc = 1
+        #else:
+        #    a= np.square(self.K)/(2.0*(2.0+np.square(self.K)))
+        #    fc = sf.j0(a)-sf.j1(a)
+        gain_par =  np.sqrt(8*cur_peak*np.square(np.pi*A_Wf)/(self.curra*self.wavelength*lmd_u*np.power(gamma,3)))
         D_par = 4*np.pi*gain_par*np.square(sigma)/self.wavelength
         rho_scale =np.cbrt(D_par)*self.slice_rho(sl)
         transv_coh_x = 1.1*np.power(ex_scale,0.25)/(1.0+(0.15*np.power(ex_scale,float(9.0/4.0))))
@@ -397,8 +413,8 @@ class MingXie(object):
         beam_z = getattr(self,'beam')
         setattr(self,'outplot',filename)
         fig , ax_mxie= plt.subplots(2,2,squeeze=False)
-        fig.set_figheight(10)
-        fig.set_figwidth(10)
+        fig.set_figheight(7)
+        fig.set_figwidth(7)
         ln1 = ax_mxie[0,0].plot(z,1e6*p_energ,color='navy')
         ax_mxie[0,0].scatter(z, 1e6 * p_energ, color='navy')
         ax_mxie[0,0].set_ylabel(r'E$_{pulse}$[$\mu$J]',color='navy')
@@ -415,7 +431,7 @@ class MingXie(object):
         ax_mxie[0,1].set_xlabel(r's[$\mu$m]')
         ax_mxie[0,1].set_ylabel(r'$\rho$',color='forestgreen')
         ax_mxie[0,1].tick_params(axis='y',which='both',color='forestgreen',labelcolor = 'forestgreen')
-        ax_mxie[0,1].tick_labelformat(axis='y',style='sci',scilimits=(0,0))
+        ax_mxie[0,1].ticklabel_format(axis='y',style='sci',scilimits=(0,0))
         ax_mxie[0,1].set_ylim(ymin=0.95*np.amin(self.rho),ymax=1.01*np.amax(self.rho))
         ax_mxie[0,1].yaxis.get_offset_text().set_fontsize('medium')
         ax_mxie[0,1].yaxis.get_offset_text().set_color('forestgreen')
@@ -442,7 +458,7 @@ class MingXie(object):
         for ticks in ax_mxie[1,0].yaxis.get_major_ticks():
             ticks.label.set_fontsize(8)
         ax_mxie[1,0].yaxis.offsetText.set_fontsize(8)
-        ax_mxie[1,0].set_ylim(ymin=0.95*np.amin(p_noise),ymax=1.01*np.amax(p_noise))
+        ax_mxie[1,0].set_ylim(ymin=0.95e-9*np.amin(p_noise),ymax=1.01e-9*np.amax(p_noise))
         ax_mxie[1,0].grid(True,color='maroon')
         ax_mxie[1,1].plot(1e6*np.array(beam_z.z),1e6*self.clength,'--',color='navy')
         ax_mxie[1,1].set_ylabel(r'L$_{cooperation}[\mu$m$]$',color='navy')
@@ -467,7 +483,7 @@ class MingXie(object):
         ax_lsat.tick_params(axis='y',which='both',color='orchid', labelcolor='orchid',labelsize='large')
         ax_lsat.set_ylim(ymin=0.7*np.amin(self.lsat),ymax=2*np.amin(self.lsat))
         plt.tight_layout()
-        fig.savefig(filename,format='png',dpi=1200)
+        fig.savefig(filename,format='png',dpi=120,bbox_inches='tight')
         return fig
 
     def saturation_power_length(self):

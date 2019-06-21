@@ -23,6 +23,7 @@ HMCC: 10-04-19 Reimplementation of the brightness in terms of the divergence and
                 beam waist of the optical beam and the divergence and beam size of
                 the electron beam.
 HMCC: 18-04-19 Fix bug that doesn't allow to read wcoefz array from the input file.
+HMCC: 21-06-19 Fix brightness plot.
 '''
 #################################################
 ### import of all modules that are required.
@@ -234,7 +235,7 @@ class FEL_simulation_block(object):
         elif f1st ==fl+drl and nsec >1:
             sase3 = MagneticLattice(np.rint(nsec/2)*cell_ps)
         else:
-            sase3 = MagneticLattice(int(np.rint(nsec/2))*cell_ps)
+            sase3 = MagneticLattice(np.rint(nsec/2)*cell_ps)
         up = UndulatorParameters(und,E_beam) # Instance of the Class UndulatorParameters
         print('++++ Undulator Parameters +++')
         up.printParameters()
@@ -967,7 +968,7 @@ class FEL_simulation_block(object):
                                  for i in np.arange(g.z.shape[0])])
         return {'z':np.array(g.z),'brightness':brightness_2,'bw_std':np.array(bw_std)}
 
-    def subfig_brightness_bw(self,ax_bw, g,legend,colour1,colour2):
+    def subfig_brightness_bw(self,ax_bw, g,colour1,colour2):
         '''
             Method to create a subplot with the brightness and the bandwidth as
             a function of z. It uses the dictionary which is the output of the
@@ -975,29 +976,43 @@ class FEL_simulation_block(object):
 
             Inputs: ax_bw: axis object from matplotlib
                     g: Output object.
-                    legend: Text to be added to the legend
                     colour1: Colour of the BW plot
                     colour2: Colour of the Brightness plot
             Outputs: None
         '''
-        bw_dict=self.brightness_calculation(g)
-        ax_bw.plot(bw_dict['z'],100.0*bw_dict['bw_std'], '-',color =colour1, linewidth=1.5,label=legend)
-        ax_bw.grid(True,color='navy')
-        ax_bw.tick_params(axis='y', which='both', colors=colour1)
-        ax_bw.set_ylabel(r'BW[%]',fontsize=10)
+        ax_br = ax_bw.twinx()
+        if isinstance(g,list):
+            colours = [[plt.cm.Blues_r(i) for i in np.linspace(0,0.65,len(g))],
+                       [plt.cm.Greens_r(i) for i in np.linspace(0,0.65,len(g))]]
+            br_noise = []
+            bw_noise = []
+            for i_g,g_out in enumerate(g):
+                ax_bw,ax_br,bw_dict=self.br_bw_plotting_noise(g_out,ax_bw,ax_br,colours[0][i_g],colours[1][i_g],'seed '+str(g_out.parameters['ipseed']))
+                br_noise.append(bw_dict['brightness'])
+                bw_noise.append(100.0*bw_dict['bw_std'])
+            ax_bw.plot(bw_dict['z'],np.average(bw_noise,axis=0), '-',color =colour1, linewidth=1.7,label='average')
+            ax_br.plot(bw_dict['z'],np.average(br_noise,axis=0), '-',color =colour2, linewidth=1.7,label='average')
+        else:
+            ax_bw,ax_br,bw_dict=self.br_bw_plotting_noise(g,ax_bw,ax_br,colour1,colour2,'BW')
+        ax_bw.grid(True,color='black')
+        ax_bw.tick_params(axis='y', which='both', colors='navy')
+        ax_bw.set_ylabel(r'BW[%]',fontsize='x-large')
         ax_bw.yaxis.label.set_color(colour1)
         ax_bw.yaxis.get_offset_text().set_color(colour1)
-        ax_br = ax_bw.twinx()
-        ax_br.plot(bw_dict['z'],bw_dict['brightness'], '--',color =colour2, linewidth=1.5)
         ax_br.set_ylabel(r'Brightness[N$_{photons}$/((mm-mrad)$^2$ $\times$ s$\times$ 0.1%BW)]',\
-            fontsize=10)
+            fontsize='x-large')
         ax_br.yaxis.get_offset_text().set_color(colour2)
         ax_br.tick_params(axis='y', which='both', colors=colour2)
-        ax_br.yaxis.label.set_color('darkgreen')
+        ax_br.yaxis.label.set_color(colour2)
         ax_br.grid(False)
-        ax_br.set_ylim([0.99*np.amin(bw_dict['brightness']),1.01*np.amax(bw_dict['brightness'])])
-        ax_bw.set_ylim([0.99*np.amin(bw_dict['bw_std']),1.01*np.amax(bw_dict['bw_std'])])
-        ax_bw.set_xlabel(r'z[m]',color='navy',fontsize=10)
+        ax_bw.set_xlabel(r'z[m]',color=colour1,fontsize='x-large')
+        return ax_bw,ax_br
+
+    def br_bw_plotting_noise(self,g,ax,ax2,colour1,colour2,legend):
+        bw_dict=self.brightness_calculation(g)
+        ax.plot(bw_dict['z'],100.0*bw_dict['bw_std'], '--',color =colour1, linewidth=0.9,label=legend)
+        ax2.plot(bw_dict['z'],bw_dict['brightness'], '--',color =colour2, linewidth=0.9)
+        return ax,ax2,bw_dict
 
     def brightness_plot(self,g,savefig=True,showfig=True):
         '''
@@ -1012,17 +1027,13 @@ class FEL_simulation_block(object):
             Outputs: None
         '''
         from cycler import cycler
-
+        colour1='royalblue'
+        colour2='forestgreen'
         fig,ax = plt.subplots(1,1)
-        if isinstance(g,list):
-            colours = [[plt.cm.Blues_r(i) for i in np.linspace(0,0.8,len(g))],
-                       [plt.cm.Greens_r(i) for i in np.linspace(0,0.8,len(g))]]
-            for i_g,g_in in enumerate(g):
-                self.subfig_brightness_bw(ax,g_in,'seed '+str(g_in.parameters['ipseed']),colours[0][i_g],colours[1][i_g])
-        else:
-            self.subfig_brightness_bw(ax,g,'BW ','royalblue','forestgreen')
-        plt.legend(loc=2,prop={'size':'small'})
+        ax_bw,ax_br=self.subfig_brightness_bw(ax,g,colour1,colour2)
+        if isinstance(g,list) and len(g)<6:
+          plt.legend(loc=2,prop={'size':'large'})
         if savefig:
-            plt.savefig(self.file_pout+'brightness_bw.png',dpi=1200,format='png')
+            plt.savefig(self.file_pout+'brightness_bw.png',dpi=120,bbox_inches='tight',format='png')
         if showfig:
             plt.show()

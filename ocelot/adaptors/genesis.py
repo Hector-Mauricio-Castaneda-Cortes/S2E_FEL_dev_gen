@@ -10,6 +10,8 @@ import os,subprocess
 import socket
 import errno
 from ocelot.rad.fel import *
+from ocelot.utils.xfel_utils import *
+from ocelot.optics.wave import calc_ph_sp_dens
 from ocelot.cpbd.beam import * # Twiss, Beam, gauss_from_twiss, ParticleArray
 from ocelot.cpbd.elements import *
 import ocelot.utils.reswake as w
@@ -18,9 +20,12 @@ from ocelot.common.math_op import *
 from ocelot.common.globals import *  # import of constants like "h_eV_s" and "speed_of_light"
 
 import math
+import time #HMCC
 import numpy as np
 from numpy import mean, std, inf, shape, append, complex128, complex64
 from copy import deepcopy #HMCC
+import multiprocessing #HMCC
+nthread = multiprocessing.cpu_count()#HMCC
 
 inputTemplate = "\
  $newrun \n\
@@ -526,6 +531,113 @@ class GenesisOutput:
             p, = self.parameters[name]
             return float(p.replace('D', 'E'))
 
+     #def calc_spec(self, mode='mid', npad=0):
+     #   '''
+     #   calculates the on-axis spectrum at every position along the undulator and writes it into "spec" attirube
+     #   
+     #   if mode = "mid" then on-axis power with on-axis phases is used for calculation
+     #   if mode = "int" then transversely integrated power with on-axis phases is used (strictly speaking inaccurate, but informative)
+     #   npad (integer) if > 0 pads the power with zeros in order to increase resolution of spectrum.
+     #   '''
+     #   if self.nSlices == 1:
+     #       raise AssertionError('Cannot calculate spectrum from steady-state simulation')
+     #   
+     #   if (npad%1 is not 0) or npad < 0:
+     #       raise ValueError('npad should be positive integer')
+     #       
+     #   if mode == 'mid':
+     #       power = self.p_mid
+     #   elif mode == 'int':
+     #       power = self.p_int
+     #   else:
+     #       raise ValueError('mode should be either "mid" or "int"')
+     #       
+     #   #_logger.debug('calculating spectrum')
+     #   power = power / (2 * self.leng / self('ncar'))**2
+     #   phi_mid = self.phi_mid
+     #   
+     #   zeros = np.zeros((self.nSlices * npad, self.nZ))
+     #   power = np.vstack((power, zeros))
+     #   phi_mid = np.vstack((phi_mid, zeros))
+     #   
+     #   spec = abs(np.fft.fft(np.sqrt(np.array(power)) * np.exp(1.j * np.array(phi_mid)), axis=0))**2 * self.dt**2 * 1e10
+     #   e_0 = h_eV_s * speed_of_light / self('xlamds')
+     #   freq_ev = h_eV_s * np.fft.fftfreq(len(spec), d=self('zsep') * self('xlamds') * self('ishsty') / speed_of_light) + e_0
+     #   
+     #   spec = np.fft.fftshift(spec, axes=0)
+     #   freq_ev = np.fft.fftshift(freq_ev, axes=0)
+     #   freq_lamd = h_eV_s * speed_of_light * 1e9 / freq_ev
+     #   
+     #   self.spec = spec
+     #   self.freq_ev = freq_ev
+     #   self.freq_lamd = freq_lamd
+     #   self.spec_mode = mode
+     #   self.sliceKeys_used.append('spec')
+     #   
+     #   sum_spec = np.sum(self.spec, axis=0)
+     #   sum_spec[sum_spec == 0] = np.inf
+     #   
+     #   self.freq_ev_mean = np.sum(self.freq_ev[:,np.newaxis] * self.spec, axis=0) / sum_spec
+     #   self.freq_ev_mean[self.freq_ev_mean == 0] = np.inf
+     #   
+     #   self.n_photons = self.pulse_energy / q_e / self.freq_ev_mean
+     #   
+     #   self.spec_phot_density = calc_ph_sp_dens(self.spec, self.freq_ev, self.n_photons)
+     #   # self.spec_phot_density = self.spec #tmp
+     #   self.sliceKeys_used.append('spec_phot_density')
+        # print ('        done')
+        
+    def phase_fix(self, wav=None, s=None):
+        '''
+        the way to display the phase, without constant slope caused by different radiation wavelength from xlamds. phase is set to 0 at maximum power slice
+        '''
+        #_logger.debug('normalizing phase from {} to {}'.format(self('xlamds'), wav))
+        
+        if 'spec' not in self.sliceKeys_used:
+            raise AssertionError('first spectrum should be calculated')
+        
+        self.phi_mid_disp = deepcopy(self.phi_mid)
+        
+        if wav == None:
+            spec_idx = np.argmax(self.spec[:, -1])
+        else:
+            spec_idx = find_nearest_idx(self.freq_lamd,wav)
+        
+        if s == None:
+            pow_idx = np.argmax(self.p_int[:, -1])
+        else:
+            pow_idx = find_nearest_idx(self.s,s)
+            
+        for zi in range(shape(self.phi_mid_disp)[1]):
+            # if debug > 1:
+                # print ('      fixing phase display: ' + str(zi) + ' of ' + str(range(shape(self.phi_mid_disp)[1])))
+
+            maxspectrum_wavelength = self.freq_lamd[spec_idx] * 1e-9
+            phase = np.unwrap(self.phi_mid[:, zi])
+            phase_cor = np.arange(self.nSlices) * (maxspectrum_wavelength - self('xlamds')) / self('xlamds') * self('zsep') * 2 * pi
+            phase_fixed = phase + phase_cor
+            phase_fixed -= phase_fixed[pow_idx]
+            n = 1
+            phase_fixed = (phase_fixed + n * pi) % (2 * n * pi) - n * pi
+            self.phi_mid_disp[:, zi] = phase_fixed
+        self.sliceKeys_used.append('phi_mid_disp')
+        # print ('        done')
+        
+    def calc_radsize(self, weigh_transv=1):
+        '''
+        weigh_transv = True to average the transverse radiation size over slices with radiation power as a weight
+        '''
+        if weigh_transv and self.nSlices != 1:
+            #_logger.debug('calculating the weighted transverse radiation size')
+            if np.amax(self.p_int) > 0:
+                weight = self.p_int + np.amin(self.p_int[self.p_int != 0]) / 1e6
+            else:
+                weight = np.ones_like(self.p_int)
+            self.rad_t_size_weighted = np.average(self.r_size * 1e6, weights=weight, axis=0)
+            self.sliceKeys_used.append('rad_t_size_weighted')
+        # print ('        done')
+        
+
     def calc_spec(self,npad=1):
         if npad <= 1:
             return
@@ -940,6 +1052,366 @@ class RadiationField():
             return 2 * pi / self.scale_kz()
         else:
             raise AttributeError('Wrong domain_z attribute')
+###### New functions RadiationField Class HMCC##################
+    def ph_sp_dens(self):
+        if self.domain_z == 't':
+            dfl = deepcopy(self)
+            dfl.fft_z()
+        else:
+            dfl = self
+        pulse_energy = dfl.E()
+        spec0 = dfl.int_z()
+        freq_ev = h_eV_s * speed_of_light / dfl.scale_z()
+        freq_ev_mean = np.sum(freq_ev*spec0) / np.sum(spec0)
+        n_photons = pulse_energy / q_e / freq_ev_mean
+        spec = calc_ph_sp_dens(spec0, freq_ev, n_photons)
+        return freq_ev, spec
+        
+    def curve_wavefront(self, r, plane='xy', domain_z=None):
+        '''
+        introduction of the additional 
+        wavefront curvature with radius r
+        
+        r can be scalar or vector with self.Nz() points
+        r>0 -> converging wavefront
+        '''
+        
+        domains = domain_o_z, domain_o_xy = self.domain_z, self.domain_xy
+        
+        if domain_z == None:
+            domain_z = domain_o_z
+        
+        #_logger.debug('curving radiation wavefront by {}m in {} domain'.format(r, domain_z))
+
+        if domain_z == 'f':
+            self.to_domain('fs')
+            x, y = np.meshgrid(self.scale_x(), self.scale_y())
+            if plane == 'xy' or plane == 'yx':
+                arg2 = x**2 + y**2
+            elif plane == 'x':
+                arg2 = x**2
+            elif plane == 'y':
+                arg2 = y**2
+            else:
+                #_logger.error('"plane" should be in ["x", "y", "xy"]')
+                raise ValueError()
+            k = 2 * np.pi / self.scale_z()
+            if np.size(r) == 1:
+                self.fld *= np.exp(-1j * k[:,np.newaxis,np.newaxis] / 2 * arg2[np.newaxis,:,:] / r)
+            elif np.size(r) == self.Nz():
+                self.fld *= np.exp(-1j * k[:,np.newaxis,np.newaxis] / 2 * arg2[np.newaxis,:,:] / r[:,np.newaxis,np.newaxis])
+        
+        elif domain_z=='t':
+            self.to_domain('ts')
+            x, y = np.meshgrid(self.scale_x(), self.scale_y())
+            if plane == 'xy' or plane == 'yx':
+                arg2 = x**2 + y**2
+            elif plane == 'x':
+                arg2 = x**2
+            elif plane == 'y':
+                arg2 = y**2
+            else:
+                #_logger.error('"plane" should be in ["x", "y", "xy"]')
+                raise ValueError()
+            k = 2 * np.pi / self.xlamds
+            if np.size(r) == 1:
+                self.fld *= np.exp(-1j * k / 2 * arg2 / r)[np.newaxis,:,:]
+            elif np.size(r) == self.Nz():
+                self.fld *= np.exp(-1j * k / 2 * arg2[np.newaxis,:,:] / r[:,np.newaxis,np.newaxis])
+            else: 
+                raise ValueError('wrong dimensions of radius of curvature')
+        
+        else:
+            ValueError('domain_z should be in ["f", "t", None]')
+            
+        self.to_domain(domains)
+    
+    def to_domain(self, domains='ts', **kwargs):
+        
+        #_logger.info('transforming radiation field to {} domain'.format(str(domains)))
+        
+        '''
+        tranfers radiation to specified domains
+        *domains is a string with one or two letters: 
+            ("t" or "f") and ("s" or "k")
+        where 
+            't' (time); 'f' (frequency); 's' (space); 'k' (inverse space); 
+        e.g.
+            't'; 'f'; 's'; 'k'; 'ts'; 'fs'; 'tk'; 'fk'
+        order does not matter
+        
+        **kwargs are passed down to self.fft_z and self.fft_xy
+        '''
+        dfldomain_check(domains)
+
+        for domain in domains:
+            domain_o_z, domain_o_xy = self.domain_z, self.domain_xy
+            if domain in ['t', 'f'] and domain is not domain_o_z:
+                self.fft_z(**kwargs)
+            if domain in ['s', 'k'] and domain is not domain_o_xy:
+                self.fft_xy(**kwargs)
+    
+    def fft_z(self, method='mp', nthread=multiprocessing.cpu_count(), debug=1):  # move to another domain ( time<->frequency )
+        #_logger.debug('calculating dfl fft_z from ' + self.domain_z + ' domain with ' + method)
+        start = time.time()
+        orig_domain = self.domain_z
+    
+        if nthread < 2:
+            method = 'np'
+    
+        if orig_domain == 't':
+            if method == 'mp' and fftw_avail:
+                fft_exec = pyfftw.builders.fft(self.fld, axis=0, overwrite_input=True, planner_effort='FFTW_ESTIMATE', threads=nthread, auto_align_input=False, auto_contiguous=False, avoid_copy=True)
+                self.fld = fft_exec()
+            else:
+                self.fld = np.fft.fft(self.fld, axis=0)
+            # else:
+                # raise ValueError('fft method should be "np" or "mp"')
+            self.fld = np.fft.ifftshift(self.fld, 0)
+            self.fld /= np.sqrt(self.Nz())
+            self.domain_z = 'f'
+        elif orig_domain == 'f':
+            self.fld = np.fft.fftshift(self.fld, 0)
+            if method == 'mp' and fftw_avail:
+                fft_exec = pyfftw.builders.ifft(self.fld, axis=0, overwrite_input=True, planner_effort='FFTW_ESTIMATE', threads=nthread, auto_align_input=False, auto_contiguous=False, avoid_copy=True)
+                self.fld = fft_exec()
+            else:
+                self.fld = np.fft.ifft(self.fld, axis=0)
+    
+                # else:
+                # raise ValueError("fft method should be 'np' or 'mp'")
+            self.fld *= np.sqrt(self.Nz())
+            self.domain_z = 't'
+        else:
+            raise ValueError("domain_z value should be 't' or 'f'")
+    
+        #t_func = time.time() - start
+        #if t_func < 60:
+        #    _logger.debug(ind_str + 'done in %.2f sec' % (t_func))
+        #else:
+        #    _logger.debug(ind_str + 'done in %.2f min' % (t_func / 60))
+    
+    
+    def fft_xy(self, method='mp', nthread=multiprocessing.cpu_count(), debug=1):  # move to another domain ( spce<->inverse_space )
+        #_logger.debug('calculating fft_xy from ' + self.domain_xy + ' domain with ' + method)
+        start = time.time()
+        domain_orig = self.domain_xy
+    
+        if nthread < 2:
+            method = 'np'
+    
+        if domain_orig == 's':
+            if method == 'mp' and fftw_avail:
+                fft_exec = pyfftw.builders.fft2(self.fld, axes=(1, 2), overwrite_input=False, planner_effort='FFTW_ESTIMATE', threads=nthread, auto_align_input=False, auto_contiguous=False, avoid_copy=True)
+                self.fld = fft_exec()
+            else:
+                self.fld = np.fft.fft2(self.fld, axes=(1, 2))
+                # else:
+                # raise ValueError("fft method should be 'np' or 'mp'")
+            self.fld = np.fft.fftshift(self.fld, axes=(1, 2))
+            self.fld /= np.sqrt(self.Nx() * self.Ny())
+            self.domain_xy = 'k'
+        elif domain_orig == 'k':
+            self.fld = np.fft.ifftshift(self.fld, axes=(1, 2))
+            if method == 'mp' and fftw_avail:
+                fft_exec = pyfftw.builders.ifft2(self.fld, axes=(1, 2), overwrite_input=False, planner_effort='FFTW_ESTIMATE', threads=nthread, auto_align_input=False, auto_contiguous=False, avoid_copy=True)
+                self.fld = fft_exec()
+            else:
+                self.fld = np.fft.ifft2(self.fld, axes=(1, 2))
+            # else:
+                # raise ValueError("fft method should be 'np' or 'mp'")
+            self.fld *= np.sqrt(self.Nx() * self.Ny())
+            self.domain_xy = 's'
+    
+        else:
+            raise ValueError("domain_xy value should be 's' or 'k'")
+    
+        #t_func = time.time() - start
+        #if t_func < 60:
+        #    _logger.debug(ind_str + 'done in %.2f sec' % (t_func))
+        #else:
+        #    _logger.debug(ind_str + 'done in %.2f min' % (t_func / 60))
+    
+    
+    def prop(self, z, fine=0, return_result=0, return_orig_domains=1, debug=1):
+        '''
+        Angular-spectrum propagation for fieldfile
+    
+        can handle wide spectrum
+          (every slice in freq.domain is propagated 
+           according to its frequency)
+        no kx**2+ky**2<<k0**2 limitation
+    
+        dfl is the RadiationField() object
+        z is the propagation distance in [m] 
+        fine=1 is a flag for ~2x faster propagation. 
+            no Fourier transform to frequency domain is done
+            assumes no angular dispersion (true for plain FEL radiation)
+            assumes narrow spectrum at center of xlamds (true for plain FEL radiation)
+        
+        return_result does not modify self, but returns result
+        
+        z>0 -> forward direction
+        '''
+        #_logger.info('propagating dfl file by %.2f meters' % (z))
+        
+        if z == 0:
+            #_logger.debug(ind_str + 'z=0, returning original')
+            if return_result:
+                return self
+            else:
+                return
+        
+        start = time.time()
+        
+        domains = self.domains()
+        
+        if return_result:
+            copydfl = deepcopy(self)
+            copydfl, self = self, copydfl
+        
+       # domain_xy = self.domain_xy
+       # domain_z = self.domain_z
+    
+        if fine==1:
+            self.to_domain('kf')
+        elif fine==-1:
+            self.to_domain('kt')
+        else:
+            self.to_domain('k')
+        # switch to inv-space/freq domain
+       # if self.domain_xy == 's':
+           # self.fft_xy(debug=debug)
+       # if self.domain_z == 't' and fine:
+           # self.fft_z(debug=debug)
+    
+        if self.domain_z == 'f':
+            k_x, k_y = np.meshgrid(self.scale_kx(), self.scale_ky())
+            k = self.scale_kz()
+            # H = np.exp(1j * z * (np.sqrt((k**2)[:,np.newaxis,np.newaxis] - (k_x**2)[np.newaxis,:,:] - (k_y**2)[np.newaxis,:,:]) - k[:,np.newaxis,np.newaxis]))
+            # self.fld *= H
+            for i in range(self.Nz()): # more memory efficient
+                H = np.exp(1j * z * (np.sqrt(k[i]**2 - k_x**2 - k_y**2) - k[i]))
+                self.fld[i, :, :] *= H
+        else:
+            k_x, k_y = np.meshgrid(self.scale_kx(), self.scale_ky())
+            k = 2 * np.pi / self.xlamds
+            H = np.exp(1j * z * (np.sqrt(k**2 - k_x**2 - k_y**2) - k))
+            # self.fld *= H[np.newaxis,:,:]
+            for i in range(self.Nz()): # more memory efficient
+                self.fld[i, :, :] *= H
+    
+        if return_orig_domains:
+            self.to_domain(domains)
+    
+        #t_func = time.time() - start
+        #_logger.debug(ind_str + 'done in %.2f sec' % t_func)
+        
+        if return_result:
+            copydfl, self = self, copydfl
+            return copydfl
+            
+    def prop_m(self, z, m=1, fine=0, return_result=0, return_orig_domains=1, debug=1):
+        '''
+        Angular-spectrum propagation for fieldfile
+        
+        can handle wide spectrum
+          (every slice in freq.domain is propagated 
+           according to its frequency)
+        no kx**2+ky**2<<k0**2 limitation
+    
+        dfl is the RadiationField() object
+        z is the propagation distance in [m]
+        m is the output mesh size in terms of input mesh size (m = L_out/L_inp)
+        fine==0 is a flag for ~2x faster propagation. 
+            no Fourier transform to frequency domain is done
+            assumes no angular dispersion (true for plain FEL radiation)
+            assumes narrow spectrum at center of xlamds (true for plain FEL radiation)
+    
+        z>0 -> forward direction
+        '''
+        #_logger.info('propagating dfl file by %.2f meters' % (z))
+        
+        if z == 0 and m == 1:
+            #_logger.debug(ind_str + 'z=0, returning original')
+            if return_result:
+                return self
+            else:
+                return
+#        elif z == 0 and m != 1:
+#            pass
+        
+        start = time.time()
+        domains = self.domains()
+        
+        if return_result:
+            copydfl = deepcopy(self)
+            copydfl, self = self, copydfl
+        
+#        domain_xy = self.domain_xy
+        domain_z = self.domain_z
+        
+        #q_multiply(dfl_out, (1-m) / z)
+        if m != 1:
+            self.curve_wavefront(-z / (1-m))
+        
+        if fine==1:
+            self.to_domain('kf')
+        elif fine==-1:
+            self.to_domain('kt')
+        else:
+            self.to_domain('k')
+       # if domain_xy == 's':
+           # self.fft_xy(debug=debug)
+       # if domain_z == 't' and fine:
+           # self.fft_z(debug=debug)
+            
+        if z != 0:
+            if self.domain_z == 'f':
+                k_x, k_y = np.meshgrid(self.scale_kx(), self.scale_ky())
+                k = self.scale_kz()
+                # H = np.exp(1j * z * (np.sqrt((k**2)[:,np.newaxis,np.newaxis] - (k_x**2)[np.newaxis,:,:] - (k_y**2)[np.newaxis,:,:]) - k[:,np.newaxis,np.newaxis]))
+                # self.fld *= H
+                for i in range(self.Nz()):
+                    H = np.exp(1j * z / m * (np.sqrt(k[i]**2 - k_x**2 - k_y**2) - k[i]))
+                    self.fld[i, :, :] *= H
+            else:
+                k_x, k_y = np.meshgrid(self.scale_kx(), self.scale_ky())
+                k = 2 * np.pi / self.xlamds
+                H = np.exp(1j * z / m * (np.sqrt(k**2 - k_x**2 - k_y**2) - k))
+                # self.fld *= H[np.newaxis,:,:]
+                for i in range(self.Nz()): # more memory efficient
+                    self.fld[i, :, :] *= H
+            
+            
+            # if self.domain_z == 'f':
+                # k = 2 * np.pi / self.xlamds
+                # self.curve_wavefront(m / z * (self.scale_kz() / k))#, domain_z='f')
+            # else:
+                # self.curve_wavefront(m / z)#, domain_z='f')
+                # print(m / z)
+        
+        self.dx *= m
+        self.dy *= m
+        
+        # switch to original domain
+       # if domain_xy == 's':
+           # self.fft_xy(debug=debug)
+       # if domain_z == 't' and fine:
+           # self.fft_z(debug=debug)
+#        self.to_domain('s')
+        if return_orig_domains:
+            self.to_domain(domains)
+        
+        if m != 1:
+            self.curve_wavefront(-m * z / (m-1))
+        
+        #t_func = time.time() - start
+        #_logger.debug(ind_str + 'done in %.2f sec' % (t_func))
+        
+        if return_result:
+            copydfl, self = self, copydfl
+            return copydfl
 
 
 class WaistScanResults():

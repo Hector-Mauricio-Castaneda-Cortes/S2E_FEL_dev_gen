@@ -4,6 +4,7 @@ statistical analysis functions, fitting, optimization and the like
 
 import numpy as np
 from numpy import cos, sin, tan, sqrt, log, exp, sum
+from copy import copy, deepcopy#HMCC
 
 def peaks(x, y, n=0):
     '''
@@ -186,6 +187,24 @@ def find_saturation(power, z, z_max, n_smooth=5):
     #plt.plot(z[ii+1], np.log10(power[ii]), 'rd')
 
     return z[ii+1], ii+1
+
+def second_derivative_saturation(x,y,zmin,zmax): #HMCC  find_saturation
+    from scipy.optimize import brentq
+    from scipy.interpolate import UnivariateSpline
+
+    z_min = [i_t for i_t,t in enumerate(x) if t>zmin][0]
+    z_max = [i_t for i_t,t in enumerate(x) if t>zmax][0]
+
+    x_i = deepcopy(x[z_min:z_max])
+    y_i=deepcopy(y[z_min:z_max])
+
+
+    y_spl = UnivariateSpline(x_i,y_i,k=5)
+    y_spl_2d = y_spl.derivative(n=2)
+
+    root2 = brentq(lambda xii: y_spl_2d(xii),zmin,zmax)
+    return np.where(x>=root2)[0][0],root2,y[np.where(x>=root2)[0][0]]
+
 
 def find_nearest(array, value):
     idx = (np.abs(array-value)).argmin()
