@@ -188,6 +188,13 @@ def find_saturation(power, z, z_max, n_smooth=5):
 
     return z[ii+1], ii+1
 
+def find_nearest_idx(array, value):
+    if value == -np.inf:
+        value = np.amin(array)
+    if value == np.inf:
+        value = np.amax(array)
+    return (np.abs(array-value)).argmin()
+
 def second_derivative_saturation(x,y,zmin,zmax): #HMCC  find_saturation
     from scipy.optimize import brentq
     from scipy.interpolate import UnivariateSpline
@@ -211,10 +218,28 @@ def find_nearest(array, value):
     return array[idx]
 
 def n_moment(x, counts, c, n):
+    x = np.squeeze(x)
+    if x.ndim is not 1:
+        raise ValueError("scale of x should be 1-dimensional")
+    if x.size not in counts.shape:
+        raise ValueError("operands could not be broadcast together with shapes %s %s" %(str(x.shape), str(counts.shape)))
+    
     if np.sum(counts)==0:
         return 0
     else:
-        return (np.sum((x-c)**n*counts) / np.sum(counts))**(1./n)
+        if x.ndim == 1 and counts.ndim == 1:
+            return (np.sum((x-c)**n*counts) / np.sum(counts))**(1./n)
+        else:
+            
+            if x.size in counts.shape:
+                dim_ = [i for i, v in enumerate(counts.shape) if v == x.size]
+                counts = np.moveaxis(counts, dim_, -1)
+                return (np.sum((x-c)**n*counts, axis=-1) / np.sum(counts, axis=-1))**(1./n)
+#def n_moment(x, counts, c, n):
+#    if np.sum(counts)==0:
+#        return 0
+#    else:
+#        return (np.sum((x-c)**n*counts) / np.sum(counts))**(1./n)
 
 def std_moment(x, counts):
     mean=n_moment(x, counts, 0, 1)
@@ -249,10 +274,9 @@ def index_of(array,value):
     return idx
 
 #HMCC migrating this function from gui/genesis_plot.py
-
 def fwhm3(valuelist, height=0.5, peakpos=-1, total=1):
-    """calculates the full width at half maximum (fwhm) of some curve.
-    the function will return the fwhm with sub-pixel interpolation.
+    """calculates the full width at half maximum (fwhm) of the array.
+    the function will return the fwhm with sub-pixel interpolation. 
     It will start at the maximum position and 'walk' left and right until it approaches the half values.
     if total==1, it will start at the edges and 'walk' towards peak until it approaches the half values.
     INPUT:
@@ -260,9 +284,9 @@ def fwhm3(valuelist, height=0.5, peakpos=-1, total=1):
     OPTIONAL INPUT:
     -peakpos: position of the peak to examine (list index)
     the global maximum will be used if omitted.
-    if total = 1 -
+    if total = 1 - 
     OUTPUT:
-    -fwhm (value)
+    - peakpos(index), interpolated_width(npoints), [index_l, index_r]
     """
     if peakpos == -1:  # no peakpos given -> take maximum
         peak = np.max(valuelist)
@@ -291,6 +315,7 @@ def fwhm3(valuelist, height=0.5, peakpos=-1, total=1):
             # calculate the width
             width = p2interp - p1interp
     else:
+        # go to center from edges
         ind1 = 1
         ind2 = valuelist.size-2
         # print(peakvalue,phalf)
@@ -312,5 +337,106 @@ def fwhm3(valuelist, height=0.5, peakpos=-1, total=1):
             # calculate the width
             width = p2interp - p1interp
         # print(p1interp, p2interp)
-
+            
     return (peakpos, width, np.array([ind1, ind2]))
+
+    ############ HMCC new version OCELOT ####
+    
+def corr_f_np(corr, val, n_skip=1, norm=1, count=0):
+    n_val = corr.shape[0]
+    for i in range(n_val):
+        if count:
+            sys.stdout.write('\r')
+            sys.stdout.write('slice %i of %i' %(i, n_val-1))
+            sys.stdout.flush()
+        for j in range(n_val):
+            means = np.mean(val[i*n_skip,:] * val[j*n_skip,:])
+            meanl = np.mean(val[i*n_skip,:])
+            meanr = np.mean(val[j*n_skip,:])
+            if norm:
+                corr[i,j] = means / meanl / meanr
+            else:
+                corr[i,j] = means - meanl * meanr
+    
+    if norm:
+        corr[np.isnan(corr)] = 1
+    else:
+        corr[np.isnan(corr)] = 0
+
+             
+def correlation2d(val, norm=0, n_skip=1):
+    N = int(val.shape[0] / n_skip)
+    corr = np.zeros([N,N])
+    corr_f_np(corr, val, n_skip, norm)
+    return corr
+    
+def corr_c_np(corr, n_corr, val, norm):
+    n_val = len(val) - n_corr*2
+    for i in range(n_val):
+        for j in range(n_corr):
+            if not j%2:
+                ind_l = int(i - j/2 + n_corr)
+                ind_r = int(i + j/2 + n_corr)
+            else:
+                ind_l = int(i - (j-1)/2 + n_corr)
+                ind_r = int(i + (j-1)/2 + 1 + n_corr)
+            means = np.mean(val[ind_l,:] * val[ind_r,:])
+            meanl = np.mean(val[ind_l,:])
+            meanr = np.mean(val[ind_r,:])
+
+            if meanl == 0 or meanr == 0:
+                corr[i,j] = 0
+            else:
+                if norm:
+                    corr[i,j] = means / meanl / meanr
+                else:
+                    corr[i,j] = means - meanl * meanr
+
+
+def correlation2d_center(n_corr, val, norm=0):
+    n_val, n_event = val.shape
+    zeros = np.zeros((n_corr, n_event))
+    val = np.r_[zeros, val, zeros]
+    corr = np.zeros([n_val, n_corr])
+    corr_c_np(corr, n_corr, val, norm)
+    return corr
+    
+def mut_coh_func(J, fld, norm=1):
+        """
+        Mutual Coherence function
+        """
+        n_x = len(fld[0,0,:])
+        n_y = len(fld[0,:,0])
+        n_z = len(fld[:,0,0])
+        
+        for i_x1 in range(n_x):
+            for i_y1 in range(n_y):                      
+                    for i_x2 in range(n_x):
+                        for i_y2 in range(n_y):
+                            j = 0
+                            for k in range(n_z):
+                                j += (fld[k, i_y1, i_x1] * fld[k, i_y2, i_x2].conjugate())
+                            if norm:
+                                AbsE1 = 0
+                                AbsE2 = 0
+                                for k in range(n_z):
+                                    AbsE1 += abs(fld[k, i_y1, i_x1])
+                                    AbsE2 += abs(fld[k, i_y2, i_x2])
+                                J[i_y1, i_x1, i_y2, i_x2] = j / (AbsE1 * AbsE2 / n_z**2) / n_z
+                            else:
+                                J[i_y1, i_x1, i_y2, i_x2] = j / n_z
+    
+def gauss_fit(X, Y):
+    import numpy as np
+    import scipy.optimize as opt
+
+    def gauss(x, p):  # p[0]==mean, p[1]==stdev p[2]==peak
+        return p[2] / (p[1] * np.sqrt(2 * np.pi)) * np.exp(-(x - p[0])**2 / (2 * p[1]**2))
+
+    p0 = [0, np.max(X) / 2, np.max(Y)]
+    errfunc = lambda p, x, y: gauss(x, p) - y
+    p1, success = opt.leastsq(errfunc, p0[:], args=(X, Y))
+    fit_mu, fit_stdev, ampl = p1
+    Y1 = gauss(X, p1)
+    RMS = fit_stdev
+    return (Y1, RMS)

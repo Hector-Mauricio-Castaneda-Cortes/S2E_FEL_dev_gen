@@ -13,7 +13,7 @@ from copy import copy, deepcopy
 import ocelot
 from ocelot import *
 from ocelot.common.math_op import *
-
+from ocelot.common.globals import *
 # from ocelot.optics.utils import *
 # from ocelot.rad.undulator_params import *
 # from ocelot.rad.fel import *
@@ -23,51 +23,233 @@ import multiprocessing
 #HMCCimport pyfftw
 nthread = multiprocessing.cpu_count()
 
-
 class StokesParameters:
     def __init__(self):
-        self.sc = np.array([])
+        self.sc_z = np.empty(0)
+        self.sc_x = np.empty(0)
+        self.sc_y = np.empty(0)
         self.s0 = np.array([])
         self.s1 = np.array([])
         self.s2 = np.array([])
         self.s3 = np.array([])
-        
+    
     def __getitem__(self,i):
-        S = deepcopy(self)
-        if self.s0.ndim == 1:
-            S.sc = self.sc[i]
-        S.s0 = self.s0[i]
-        S.s1 = self.s1[i]
-        S.s2 = self.s2[i]
-        S.s3 = self.s3[i]
-        return S
+        S = StokesParameters() # start from emply object to save space
         
-    def s_coh(self):
+        shape = self.s0.shape
+        #_logger.log(5, ind_str + 'Stokes slicing index all' + str(i))
+        if isinstance(i, tuple):
+            i1 = tuple([ii for ii in i if ii is not None]) # account for np.newaxis
+            #_logger.log(5, ind_str + 'Stokes slicing index scales' + str(i1))
+            for dim, i1i in enumerate(i1): #slice scales, avoiding slicing zero-length-arrays
+                if dim == 0:
+                    if np.size(self.sc_z)>1:
+                        S.sc_z = self.sc_z[i1i]
+                if dim == 1:
+                    if np.size(self.sc_y)>1:
+                        S.sc_y = self.sc_y[i1i]
+                if dim == 2:
+                    if np.size(self.sc_x)>1:
+                        S.sc_x = self.sc_x[i1i]
+            
+            # if len(i1) == 3:
+                # S.sc_z, S.sc_y, S.sc_x = self.sc_z[i1[0]], self.sc_y[i1[1]], self.sc_x[i1[2]]
+            # elif len(i1) == 2:
+                # S.sc_z, S.sc_y = self.sc_z[i1[0]], self.sc_y[i1[1]]
+            # elif len(i1) == 1:
+                # S.sc_z = self.sc_z[i1[0]]
+            # else:
+                # raise ValueError
+        elif isinstance(i, slice) or isinstance(i, int):
+            S.sc_z = self.sc_z[i]
+        
+        # opy all possible attributes
+        for attr in dir(self):
+            if attr.startswith('__') or callable(getattr(self,attr)) or attr in ['sc_z', 'sc_x', 'sc_y']:
+                continue
+            value = getattr(self,attr)
+            if np.shape(value) == shape:
+                setattr(S, attr, value[i])
+            else:
+                setattr(S, attr, value)
+        # redundant
+        # S.s0 = self.s0[i]
+        # S.s1 = self.s1[i]
+        # S.s2 = self.s2[i]
+        # S.s3 = self.s3[i]
+        
+        return S
+    
+    def P_pol(self):
         #coherent part
         return np.sqrt(self.s1**2 + self.s2**2 + self.s3**2)
-    def s_l(self):
+    def P_pol_l(self):
         #linearly polarized part
         return np.sqrt(self.s1**2 + self.s2**2)
+    def deg_pol(self):
+        with np.errstate(divide='ignore'):
+            return self.P_pol() / self.s0
+    def deg_pol_l(self):
+        with np.errstate(divide='ignore'):
+            return self.P_pol_l() / self.s0
+    def deg_pol_c(self):
+        with np.errstate(divide='ignore'):
+            return np.abs(self.s3) / self.s0
         #        self.s_coh = np.array([])
     def chi(self):
         # chi angle (p/4 = circular)
-        return np.arctan(self.s3 / np.sqrt(self.s1**2 + self.s2**2)) / 2
+        with np.errstate(divide='ignore'):
+            return np.arctan(self.s3 / np.sqrt(self.s1**2 + self.s2**2)) / 2
     def psi(self):
         # psi angle 0 - horizontal, pi/2 - vertical
-        psi = np.arctan(self.s2 / self.s1) / 2
+        with np.errstate(divide='ignore'):
+            psi = np.arctan(self.s2 / self.s1) / 2
 
         idx1 = np.where((self.s1<0) & (self.s2>0))
         idx2 = np.where((self.s1<0) & (self.s2<0))
-        if size(psi) == 1:
+        if np.size(psi) == 1:
             # continue
             # psi = psi
-            if size(idx1): psi += np.pi/2
-            if size(idx2): psi -= np.pi/2
+            if np.size(idx1): psi += np.pi/2
+            if np.size(idx2): psi -= np.pi/2
         else:
             psi[idx1] += np.pi/2
             psi[idx2] -= np.pi/2
         return psi
+    
+    def slice_2d(self, loc, plane='z'):
+        #_logger.debug('slicing stokes matrix at location {} over {} plane'.format(loc, plane))
+        if plane in ['x', 2]:
+            plane = 2
+            scale = self.sc_x
+        elif plane in ['y', 1]:
+            plane = 1
+            scale = self.sc_y
+        elif plane in ['z', 0]:
+            plane = 0
+            scale = self.sc_z
+        else:
+            #_logger.error(ind_str + 'argument "plane" should be in ["x","y","z",0,1,2]')
+            raise ValueError('argument "plane" should be in ["x","y","z",0,1,2]')
+        idx = find_nearest_idx(scale, loc)
+        return slice_2d_idx(self, idx, plane)
+    
+    def slice_2d_idx(self, idx, plane='z'):
+        #_logger.debug('slicing stokes matrix at index {} over {} plane'.format(idx, plane))
+        #speedup by aboiding deepcopy
+        S = deepcopy(self)
+        if plane in ['x', 2]:
+            plane = 2
+        elif plane in ['y', 1]:
+            plane = 1
+        elif plane in ['z', 0]:
+            plane = 0
+        else:
+            #_logger.error(ind_str + 'argument "plane" should be in ["x","y","z",0,1,2]')
+            raise ValueError('argument "plane" should be in ["x","y","z",0,1,2]')
+        if plane == 0:
+            S.s0 = S.s0[np.newaxis, idx, :, :]
+            S.s1 = S.s1[np.newaxis, idx, :, :]
+            S.s2 = S.s2[np.newaxis, idx, :, :]
+            S.s3 = S.s3[np.newaxis, idx, :, :]
+            S.sc_z = np.arange(1)
+        elif plane == 1:
+            S.s0 = S.s0[:, np.newaxis, idx, :]
+            S.s1 = S.s1[:, np.newaxis, idx, :]
+            S.s2 = S.s2[:, np.newaxis, idx, :]
+            S.s3 = S.s3[:, np.newaxis, idx, :]
+            S.sc_y = np.arange(1)
+        elif plane == 2:
+            S.s0 = S.s0[:, :, np.newaxis, idx]
+            S.s1 = S.s1[:, :, np.newaxis, idx]
+            S.s2 = S.s2[:, :, np.newaxis, idx]
+            S.s3 = S.s3[:, :, np.newaxis, idx]
+            S.sc_x = np.arange(1)
+        else:
+            #_logger.error(ind_str + 'argument "axis" is not defined')
+            raise ValueError('argument "axis" is not defined')
+        return S
+    
+    def proj(self, plane='x', mode='sum'):
+        #_logger.debug('calculating projection of stokes matrix over {} plane'.format(plane))
+        S = deepcopy(self)
+        nz, ny, nx = self.s0.shape
+        if plane in ['x', 2]:
+            plane = 2
+            n_points = nx
+            S.sc_x = np.arange(1)
+        elif plane in ['y', 1]:
+            plane = 1
+            n_points = ny
+            S.sc_y = np.arange(1)
+        elif plane in ['z', 0]:
+            plane = 0
+            n_points = nz
+            S.sc_z = np.arange(1)
+        else:
+            #_logger.error(ind_str + 'argument "plane" should be in ["x","y","z",0,1,2]')
+            raise ValueError('argument "plane" should be in ["x","y","z",0,1,2]')
         
+        S.s0 = np.sum(self.s0, axis=plane, keepdims=1)
+        S.s1 = np.sum(self.s1, axis=plane, keepdims=1)
+        S.s2 = np.sum(self.s2, axis=plane, keepdims=1)
+        S.s3 = np.sum(self.s3, axis=plane, keepdims=1)
+        
+        if mode == 'sum':
+            return S
+        elif mode == 'mean':
+            S.s0 = S.s0 / n_points
+            S.s1 = S.s1 / n_points
+            S.s2 = S.s2 / n_points
+            S.s3 = S.s3 / n_points
+            return S
+        else:
+            #_logger.error(ind_str + 'argument "mode" should be in ["sum", "mean"]')
+            raise ValueError('argument "mode" should be in ["sum", "mean"]')
+#class StokesParameters:
+#    def __init__(self):
+#        self.sc = np.array([])
+#        self.s0 = np.array([])
+#        self.s1 = np.array([])
+#        self.s2 = np.array([])
+#        self.s3 = np.array([])
+#        
+#    def __getitem__(self,i):
+#        S = deepcopy(self)
+#        if self.s0.ndim == 1:
+#            S.sc = self.sc[i]
+#        S.s0 = self.s0[i]
+#        S.s1 = self.s1[i]
+#        S.s2 = self.s2[i]
+#        S.s3 = self.s3[i]
+#        return S
+#        
+#    def s_coh(self):
+#        #coherent part
+#        return np.sqrt(self.s1**2 + self.s2**2 + self.s3**2)
+#    def s_l(self):
+#        #linearly polarized part
+#        return np.sqrt(self.s1**2 + self.s2**2)
+#        #        self.s_coh = np.array([])
+#    def chi(self):
+#        # chi angle (p/4 = circular)
+#        return np.arctan(self.s3 / np.sqrt(self.s1**2 + self.s2**2)) / 2
+#    def psi(self):
+#        # psi angle 0 - horizontal, pi/2 - vertical
+#        psi = np.arctan(self.s2 / self.s1) / 2
+#
+#        idx1 = np.where((self.s1<0) & (self.s2>0))
+#        idx2 = np.where((self.s1<0) & (self.s2<0))
+#        if size(psi) == 1:
+#            # continue
+#            # psi = psi
+#            if size(idx1): psi += np.pi/2
+#            if size(idx2): psi -= np.pi/2
+#        else:
+#            psi[idx1] += np.pi/2
+#            psi[idx2] -= np.pi/2
+#        return psi
+#        
 def bin_stokes(S, bin_size):
     
     if type(S) != StokesParameters:
@@ -112,30 +294,80 @@ def calc_stokes_out(out1, out2, pol='rl', on_axis=True):
     return S
     
 
-def calc_stokes_dfl(dfl1, dfl2, pol='rl', mode=(0,0)):
-    #mode: (average_longitudinally, sum_transversely)
-    if pol != 'rl':
-        raise ValueError('Not implemented yet')
+#def calc_stokes_dfl(dfl1, dfl2, pol='rl', mode=(0,0)):
+#    #mode: (average_longitudinally, sum_transversely)
+#    if pol != 'rl':
+#        raise ValueError('Not implemented yet')
+#    
+#    if len(dfl1.fld) != len(dfl2.fld):
+#        l1 = len(dfl1.fld)
+#        l2 = len(dfl2.fld)
+#        if l1 > l2:
+#            dfl1.fld = dfl1.fld[:-(l1-l2),:,:]
+#        else:
+#            dfl2.fld = dfl2.fld[:-(l2-l1),:,:]##
+
+#    # if np.equal(dfl1.scale_z(), dfl2.scale_z()).all():
+#    s = dfl1.scale_z()
+#    # else:
+#        # raise ValueError('Different scales')
+#    
+#    Ex = (dfl1.fld + dfl2.fld) / sqrt(2)                #(E1x + E2x) /sqrt(2)
+#    Ey = (dfl1.fld * 1j + dfl2.fld * (-1j)) / sqrt(2)   #(E1y + E2y) /sqrt(2)
+#    
+#    S = calc_stokes(Ex,Ey,s)#
+
+#    if mode[1]:
+#        S = sum_stokes_tr(S)
+#        # S.s0 = np.sum(S.s0,axis=(1,2))
+#        # S.s1 = np.sum(S.s1,axis=(1,2))
+#        # S.s2 = np.sum(S.s2,axis=(1,2))
+#        # S.s3 = np.sum(S.s3,axis=(1,2))
+#    
+#    if mode[0]:
+#        S = average_stokes_l(S)
+
+#    return S
+
+############ HMCCC new version of OCELOT    
+def calc_stokes_dfl(dfl1, dfl2, basis='xy', mode=(0,0)):
+    '''
+    mode: (average_longitudinally, sum_transversely)
+    '''
     
-    if len(dfl1.fld) != len(dfl2.fld):
-        l1 = len(dfl1.fld)
-        l2 = len(dfl2.fld)
+#    _logger.info('calculating Stokes parameters from dfl')
+#    _logger.debug(ind_str + 'dfl1 {}:'.format(dfl1.fld.shape) + str(dfl1.filePath) + ' ' + str(dfl1))
+#    _logger.debug(ind_str + 'dfl2 {}:'.format(dfl2.fld.shape) + str(dfl2.filePath) + ' ' + str(dfl2))
+
+    # if basis != 'xy':
+        # raise ValueError('Not implemented yet')
+    
+    if dfl1.Nz() != dfl2.Nz():
+        dfl1 = deepcopy(dfl1)
+        dfl2 = deepcopy(dfl2)
+        l1 = dfl1.Nz()
+        l2 = dfl2.Nz()
         if l1 > l2:
-            dfl1.fld = dfl1.fld[:-(l1-l2),:,:]
+#            _logger.info(ind_str + 'dfl1.Nz()={:} > dfl2.Nz()={:}, cutting dfl1'.format(l1, l2))
+            dfl1.fld = dfl1.fld[:-(l1-l2), :, :]
         else:
-            dfl2.fld = dfl2.fld[:-(l2-l1),:,:]
+#            _logger.info(ind_str + 'dfl1.Nz()={:} < dfl2.Nz()={:}, cutting dfl2'.format(l1, l2))
+            dfl2.fld = dfl2.fld[:-(l2-l1), :, :]
 
     # if np.equal(dfl1.scale_z(), dfl2.scale_z()).all():
-    s = dfl1.scale_z()
+    s = (dfl1.scale_z(), dfl1.scale_x(), dfl1.scale_y())
     # else:
         # raise ValueError('Different scales')
     
-    Ex = (dfl1.fld + dfl2.fld) / sqrt(2)                #(E1x + E2x) /sqrt(2)
-    Ey = (dfl1.fld * 1j + dfl2.fld * (-1j)) / sqrt(2)   #(E1y + E2y) /sqrt(2)
+    # Ex = (dfl1.fld + dfl2.fld) / np.sqrt(2)                #(E1x + E2x) /np.sqrt(2)
+    # Ey = (dfl1.fld * 1j + dfl2.fld * (-1j)) / np.sqrt(2)   #(E1y + E2y) /np.sqrt(2)
     
-    S = calc_stokes(Ex,Ey,s)
-
+    S = calc_stokes(dfl1.fld, dfl2.fld, basis=basis)
+    S.sc = None
+    S.sc_z, S.sc_x, S.sc_y = dfl1.scale_z(), dfl1.scale_x(), dfl1.scale_y()
+    
     if mode[1]:
+#        _logger.info(ind_str + 'summing transversely')
         S = sum_stokes_tr(S)
         # S.s0 = np.sum(S.s0,axis=(1,2))
         # S.s1 = np.sum(S.s1,axis=(1,2))
@@ -143,56 +375,96 @@ def calc_stokes_dfl(dfl1, dfl2, pol='rl', mode=(0,0)):
         # S.s3 = np.sum(S.s3,axis=(1,2))
     
     if mode[0]:
+#        _logger.info(ind_str + 'averageing longitudinally')
         S = average_stokes_l(S)
-
+#    _logger.info(ind_str + 'done')
     return S
-
     
     
-def calc_stokes(Ex,Ey,s=None):
-    
-    if len(Ex) != len(Ey):
+def calc_stokes(E1, E2, s=None, basis='xy'):
+#    _logger.info('calculating Stokes parameters')
+#    _logger.info(ind_str + 'basis = "{}"'.format(basis))
+    if E1.shape != E2.shape:
         raise ValueError('Ex and Ey dimentions do not match')
-        
-    if s is None:
-        s = np.arange(len(Ex))
-    
-    Ex_ = np.conj(Ex)
-    Ey_ = np.conj(Ey)
-    
-    Jxx = Ex * Ex_
-    Jxy = Ex * Ey_
-    Jyx = Ey * Ex_
-    Jyy = Ey * Ey_
-    
-    del (Ex_,Ey_)
     
     S = StokesParameters()
+    
+    if s is None:
+        s = np.arange(E1.size)
+    
+    if basis == 'lr' or basis == 'rl': 
+        if basis == 'lr':
+            E1, E2 = E2, E1
+        Er, El = E1, E2
+        
+        Er_ = np.conj(Er)
+        El_ = np.conj(El)
+        
+        E1 = Er*Er_
+        E2 = El*El_
+        E3 = Er*El_
+        E4 = El*Er_
+        del (Er, El, Er_, El_)
+        
+        Jxx = E1 + E2 + E3 + E4
+        Jyy = E1 + E2 - E3 - E4
+        Jxy = (-1j) * (E1 - E2 - E3 + E4)
+        Jyx = np.conj(Jxy)
+        del (E1, E2, E3, E4)
+#        Jxx = Er*Er_ + El*El_ + Er*El_ + El*Er_ 
+#        Jyy = Er*Er_ + El*El_ - Er*El_ - El*Er_
+#        Jxy = (-1j)*(Er*Er_ - El*El_ - Er*El_ + El*Er_)
+#        Jyx = np.conj(Jxy)
+#        
+#        del (Er_, El_, Er, El)
+    
+    elif basis == 'yx' or basis == 'xy': 
+        if basis == 'yx':
+            E1, E2 = E2, E1
+        Ex, Ey = E1, E2
+        
+        Ex_ = np.conj(Ex)
+        Ey_ = np.conj(Ey)
+        
+        Jxx = Ex * Ex_
+        Jxy = Ex * Ey_
+        Jyx = Ey * Ex_
+        Jyy = Ey * Ey_
+        
+        del (Ex_, Ey_, Ex, Ey)
+        
+#    else:
+#        msg = 'basis should be in ["lr", "rl", "xy", "yx"]'
+#        _logger.error(msg)
+#        raise ValueError(msg)
+        
+    
     S.sc = s
-    S.s0 = real(Jxx + Jyy)
-    S.s1 = real(Jxx - Jyy)
-    S.s2 = real(Jxy + Jyx)
-    S.s3 = real(1j * (Jyx - Jxy))
+    S.s0 = np.real(Jxx + Jyy)
+    S.s1 = np.real(Jxx - Jyy)
+    S.s2 = np.real(Jxy + Jyx)
+    S.s3 = np.real(1j * (Jyx - Jxy))
     
     return S
     
-def average_stokes_l(S,sc_range=None):
+def average_stokes_l(S, sc_range=None):
     
-    #if type(S) != StokesParameters:
-    if not isinstance(S,StokesParameters): #HMCC
-        raise ValueError('Not a StokesParameters object')
+#    if type(S) != StokesParameters:
+#        raise ValueError('Not a StokesParameters object')
     
     if sc_range is None:
-        sc_range = [S.sc[0], S.sc[-1]]
+        sc_range = [S.sc_z[0], S.sc_z[-1]]
 
-    idx1 = np.where(S.sc >= sc_range[0])[0][0]
-    idx2 = np.where(S.sc <= sc_range[-1])[0][-1]
+    idx1 = np.where(S.sc_z >= sc_range[0])[0][0]
+    idx2 = np.where(S.sc_z <= sc_range[-1])[0][-1]
     
     if idx1 == idx2:
         return S[idx1]
     
     S1 = StokesParameters()
-    S1.sc = np.mean(S.sc[idx1:idx2], axis=0)
+    S1.sc_z = np.mean(S.sc_z[idx1:idx2], axis=0)
+    S1.sc_x = S.sc_x
+    S1.sc_y = S.sc_y
     S1.s0 = np.mean(S.s0[idx1:idx2], axis=0)
     S1.s1 = np.mean(S.s1[idx1:idx2], axis=0)
     S1.s2 = np.mean(S.s2[idx1:idx2], axis=0)
@@ -201,20 +473,90 @@ def average_stokes_l(S,sc_range=None):
     
 def sum_stokes_tr(S):
     
-    #if type(S) != StokesParameters:
-    if not isinstance(S,StokesParameters): #HMCC
-        raise ValueError('Not a StokesParameters object')
+#    if type(S) != StokesParameters:
+#        raise ValueError('Not a StokesParameters object')
     if S.s0.ndim == 1:
         return S
     else:
         S1 = StokesParameters()
-        S1.sc = S.sc
+        S1.sc_x = np.empty(0)
+        S1.sc_y = np.empty(0)
+        S1.sc_z = S.sc_z
         S1.s0 = np.sum(S.s0,axis=(-1,-2))
         S1.s1 = np.sum(S.s1,axis=(-1,-2))
         S1.s2 = np.sum(S.s2,axis=(-1,-2))
         S1.s3 = np.sum(S.s3,axis=(-1,-2))
         
     return S1
+####################################################
+    
+    
+#def calc_stokes(Ex,Ey,s=None):
+    
+#    if len(Ex) != len(Ey):
+#        raise ValueError('Ex and Ey dimentions do not match')
+#        
+#    if s is None:
+#        s = np.arange(len(Ex))
+#    
+#    Ex_ = np.conj(Ex)
+#    Ey_ = np.conj(Ey)
+#    
+#    Jxx = Ex * Ex_
+#    Jxy = Ex * Ey_
+#    Jyx = Ey * Ex_
+#    Jyy = Ey * Ey_
+#    
+#    del (Ex_,Ey_)
+#    
+#    S = StokesParameters()
+#    S.sc = s
+#    S.s0 = np.real(Jxx + Jyy)
+#    S.s1 = np.real(Jxx - Jyy)
+#    S.s2 = np.real(Jxy + Jyx)
+#    S.s3 = np.real(1j * (Jyx - Jxy))
+    
+#    return S
+    
+#def average_stokes_l(S,sc_range=None):
+#    
+#    #if type(S) != StokesParameters:
+#    if not isinstance(S,StokesParameters): #HMCC
+#        raise ValueError('Not a StokesParameters object')
+#    
+#    if sc_range is None:
+#        sc_range = [S.sc[0], S.sc[-1]]##
+
+#    idx1 = np.where(S.sc >= sc_range[0])[0][0]
+#    idx2 = np.where(S.sc <= sc_range[-1])[0][-1]
+#    
+#    if idx1 == idx2:
+#        return S[idx1]
+    
+#    S1 = StokesParameters()
+#    S1.sc = np.mean(S.sc[idx1:idx2], axis=0)
+#    S1.s0 = np.mean(S.s0[idx1:idx2], axis=0)
+#    S1.s1 = np.mean(S.s1[idx1:idx2], axis=0)
+#    S1.s2 = np.mean(S.s2[idx1:idx2], axis=0)
+#    S1.s3 = np.mean(S.s3[idx1:idx2], axis=0)
+#    return S1
+    
+#def sum_stokes_tr(S):
+#    
+#    #if type(S) != StokesParameters:
+#    if not isinstance(S,StokesParameters): #HMCC
+#        raise ValueError('Not a StokesParameters object')
+#    if S.s0.ndim == 1:
+#        return S
+#    else:
+#        S1 = StokesParameters()
+#        S1.sc = S.sc
+#        S1.s0 = np.sum(S.s0,axis=(-1,-2))
+#        S1.s1 = np.sum(S.s1,axis=(-1,-2))
+#        S1.s2 = np.sum(S.s2,axis=(-1,-2))
+#        S1.s3 = np.sum(S.s3,axis=(-1,-2))
+        
+#    return S1
     
     
 class WignerDistribution():
@@ -222,6 +564,7 @@ class WignerDistribution():
     calculated wigner distribution (spectrogram) of the pulse
     in time/frequency domain as space/wavelength
     '''
+    
     
     
     def __init__(self):
@@ -244,12 +587,10 @@ class WignerDistribution():
         return np.sum(self.wig)*abs(self.s[1]-self.s[0])/speed_of_light
         
     def fileName(self):
+        from ocelot.adaptors.genesis import filename_from_path
         return filename_from_path(self.filePath)
         
-    def eval(self,method = 'mp'):
-        
-        # from ocelot.utils.xfel_utils import calc_wigner
-        
+    def eval(self,method = 'np'):
         ds = self.s[1] - self.s[0]
         self.wig = calc_wigner(self.field, method=method, debug=1)
         freq_ev = h_eV_s * (np.fft.fftfreq(self.s.size, d = ds / speed_of_light) + speed_of_light / self.xlamds)
@@ -1088,15 +1429,14 @@ def wigner_pad(wig,pad):
 #    W_out.eval()
     return wig_out
 
-def wigner_out(out, z=inf, method='mp', pad=1, debug=1):
+def wigner_out(out, z=inf, method='np', pad=1, debug=1):
     '''
     returns WignerDistribution from GenesisOutput at z
     '''
+    #if not isinstance(out,GenesisOutput):
+    #   raise ValueError('Not a GenesisOutput object')
+    #assert len(out.s)>0
     
-    assert isinstance(out,GenesisOutput)
-    assert len(out.s)>0
-    
-    import numpy as np
     
     if debug>0: 
         print('    calculating Wigner distribution')

@@ -292,6 +292,10 @@ class FEL_simulation_block(object):
             with open(f_path+'/'+inp0.latticefile,'w') as f:
                 f.write(generate_lattice(inp0.lat,unit=inp0.xlamd*inp0.delz,energy=inp0.gamma0*m_e_GeV))
                 f.close()
+        if inp.dpa != None:
+            write_dpa_file(inp0.dpa, f_path+'/' + 'run.0.inp.dpa')
+            inp0.partfile='run.0.inp.dpa'
+
         try:
             os.system('./betamatch < beta_input_file.in')
         except:
@@ -307,10 +311,10 @@ class FEL_simulation_block(object):
                 print('Betamatch changed parameters')
                 setattr(inp0,params,getattr(inp2,params))
             elif (getattr(inp0,params)!=getattr(inp0,params)):
-                print('Nan as a solution. Parameters of original input file')
-                for params2 in A_params:
-                    setattr(inp0, params, getattr(inp2, params))
-                break
+                print('Nan as a solution. ')
+                #for params2 in A_params:
+                #    setattr(inp0, params, getattr(inp2, params))
+                #break
         os.remove(f_path+'/beta_input_file.in')
         os.remove(f_path+'/TEMPLATE.IN')
         os.remove(f_path+'/mod_file.in')
@@ -434,8 +438,10 @@ class FEL_simulation_block(object):
 
         if (self.parameter in A_simul):
             setattr(inp,self.parameter,n_p)
-            inp.lat = A_und['Magnetic Lattice']
-            setattr(inp,'magin',1)
+            inp.lat=None
+            inp.magin=0
+            #inp.lat = A_und['Magnetic Lattice']
+            #setattr(inp,'magin',1)
             print(' ++++++++++ Scan {0} of the parameter {1}'.format(n_p, self.parameter))
         elif ((self.parameter in A_undl) or (self.parameter == 'xlamds') or self.parameter =='aw0'):
             print(' ++++++++++ Steady State Scan {0} of the parameter {1} Quad optimisation'.format(n_p, self.parameter))
@@ -451,12 +457,13 @@ class FEL_simulation_block(object):
                     setattr(inp,'aw0',n_p)
                     setattr(inp,'awd',n_p)
                 else:
-                    n_par = int(n_p)
-                    if self.parameter in A_undl[0:2]:
-                        for j_quad in A_undl[0:2]:
+                    if self.parameter in A_undl[:2]:
+                        n_par = float(n_p)
+                        for j_quad in A_undl[:2]:
                             setattr(A_inpt,str(j_quad),n_par)
                             setattr(inp,str(j_quad),n_par)
                     else:
+                        n_par = int(n_p)
                         setattr(A_inpt,self.parameter,n_par)
                         setattr(inp,self.parameter,n_par)
             else:
@@ -742,7 +749,10 @@ class FEL_simulation_block(object):
                 num=1
                 run_ids= range(1)
                 if self.parameter !='aw0':
-                    s_scan = np.arange(int(self.init),int(self.end),step=int(np.ceil((self.end-self.init)/(self.n_scan))))
+                    if  not self.parameter in A_und[:2]:
+                        s_scan = np.arange(int(self.init),int(self.end),step=int(np.ceil((self.end-self.init)/(self.n_scan))))
+                    else:
+                        s_scan = np.linspace(self.init,self.end,self.n_scan)
                 else:
                     s_scan = np.linspace(self.init,self.end,self.n_scan)
                 print('++++ Quad scan, parameter  {0} ++++++'.format(self.parameter))
@@ -769,7 +779,8 @@ class FEL_simulation_block(object):
             i_tdp = True
 
             # Generate input object
-        inp = generate_input(A_undulator['Undulator Parameters'],A_beam,itdp=i_tdp)
+        #inp = generate_input(A_undulator['Undulator Parameters'],A_beam,itdp=i_tdp)
+        inp=A_input
 
         # Overwrite the simulation attributes of the input object with the ones defined in the input file
         for key in A_input.__dict__:
@@ -881,9 +892,12 @@ class FEL_simulation_block(object):
 
                 if self.i_scan==1 and A_input.latticefile==None:
                     inp= self.GEN_scan(n_par ,A_input,A_undulator,inp)
-                elif self.i_scan==0 and inp.f1st==1 and A_input.latticefile ==None:
+                    inp.lat =None
+                    setattr(inp,'magin',0)
+                elif self.i_scan==0 and inp.f1st==np.rint(inp.fl/2) and A_input.latticefile ==None:
                     inp.lat = A_undulator['Magnetic Lattice']
                     setattr(inp,'magin',1)
+                    #setattr(inp,'magin',0)
                 elif A_input.latticefile !=None:
                     setattr(inp,'magin',1)
                     setattr(inp,'latticefile',getattr(A_input,'latticefile'))
@@ -896,6 +910,10 @@ class FEL_simulation_block(object):
                 if inp.wcoefz[2]!= 0 :
                     inp.lat =None
                     inp.magin =0
+
+                if (getattr(inp,'rxbeam')!=getattr(inp,'rxbeam')) or (getattr(inp,'rybeam')!=getattr(inp,'rybeam')):
+                    break
+
                 launcher=get_genesis_launcher(self.gen_launch)
                 print('+++++ Starting simulation of noise realisation {0}'.format(run_id))
 
@@ -906,7 +924,7 @@ class FEL_simulation_block(object):
                 else:
                     out_arr.append(inp)
                 if (inp.itdp==1):
-                    plot_gen_out_all(handle=g, savefig=True, showfig=False, choice=(1, 1, 1, 1, self.zd, 0, 0, 0, 0, 0, 0, 0, 0), vartype_dfl=complex128, debug=1)
+                  plot_gen_out_all(handle=g, savefig=True, showfig=False, choice=(1, 1, 1, 1, self.zd, 0, 0, 0, 0, 0, 0, 0, 0), vartype_dfl=complex128, debug=1)
 
                 inp.latticefile=None
                 inp.outputfile=None
