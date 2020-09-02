@@ -278,7 +278,9 @@ class FEL_simulation_block(object):
         from copy import deepcopy
         file_or = getattr(self,'gen_file')
         A_params = ['rxbeam', 'rybeam','alphax','alphay','emitx','emity']
+        nsec_old = inp.nsec
         inp0 = inp
+        inp0.nsec=2
         os.system('cp /scratch2b/qfi29231/betamatch_dir/betamatch %s' %(f_path))
         os.chdir(f_path)
         with open(f_path+'/mod_file.in','w') as f:
@@ -297,7 +299,7 @@ class FEL_simulation_block(object):
             inp0.partfile='run.0.inp.dpa'
 
         try:
-            os.system('./betamatch < beta_input_file.in')
+            os.system('betamatch < beta_input_file.in')
         except:
             print('Betamatch did not work')
 
@@ -315,9 +317,9 @@ class FEL_simulation_block(object):
                 #for params2 in A_params:
                 #    setattr(inp0, params, getattr(inp2, params))
                 #break
-        os.remove(f_path+'/beta_input_file.in')
-        os.remove(f_path+'/TEMPLATE.IN')
-        os.remove(f_path+'/mod_file.in')
+        #os.remove(f_path+'/beta_input_file.in')
+        #os.remove(f_path+'/TEMPLATE.IN')
+        #os.remove(f_path+'/mod_file.in')
         setattr(self,'gen_file',file_or)
         return inp0
 
@@ -429,6 +431,8 @@ class FEL_simulation_block(object):
         from ocelot.cpbd.beam import Twiss
         from ocelot.gui.genesis_plot import plot_edist
         inp = in_p
+        nsec_old = inp.nsec
+        inp.nsec=2
         A_inpt = A_inp
         inp_file = inp.run_dir + 'run.' + str(inp.runid) + '.inp'
         inp_file = filename_from_path(inp_file)
@@ -448,7 +452,8 @@ class FEL_simulation_block(object):
             setattr(inp,'type','steady')
             setattr(inp,'itdp',0)
             setattr(inp,'shotnoise',0)
-            setattr(inp,'prad0',10)
+            setattr(inp,'prad0',A_inp.prad0)
+            setattr(inp,'nsec',2)
             setattr(inp,'betamatch',True)
             if (self.parameter in A_undl):
                 if self.parameter == 'aw0':
@@ -462,6 +467,8 @@ class FEL_simulation_block(object):
                         for j_quad in A_undl[:2]:
                             setattr(A_inpt,str(j_quad),n_par)
                             setattr(inp,str(j_quad),n_par)
+                        inp = self.beta_matching(inp,inp.run_dir)
+
                     else:
                         n_par = int(n_p)
                         setattr(A_inpt,self.parameter,n_par)
@@ -478,7 +485,6 @@ class FEL_simulation_block(object):
             #setattr(inp,'magin',1)
             #if self.parameter !='aw0':
             inp = self.beta_matching(inp,inp.run_dir)
-
             if inp.edist!=None:
                 inp0=inp
                 for i_tw in getattr(self,'tw_match'):
@@ -491,6 +497,7 @@ class FEL_simulation_block(object):
             setattr(inp,self.parameter,n_p)
             #setattr(inp,'lat',A_undulator['Magnetic Lattice'])
             #setattr(inp,'magin',1)
+        inp.nsec= nsec_old
         return inp
 
     def gen_outplot_single(self,run_inp= [], itdp = True,savefig=True):
@@ -865,15 +872,17 @@ class FEL_simulation_block(object):
                 inp.runid = run_id
                 if i_br==1:
                     inp.lout =  [1,1,1,1,1,1,1,1,1,1,1,0,0,1,0,0,0,0,0]
-                if ((self.stat_run==1) or (self.i_scan==1)):
+                if ((self.stat_run==1) or (self.i_scan==1)) and not i_aft:
                     setattr(inp,'ipseed',-1)
-                else:
+                elif ((self.stat_run>1) and (self.i_scan==0)) and not i_aft:
                     ipseed = np.random.randint(9999)
                     setattr(inp,'ipseed', ipseed)
+
+
                 inp.run_dir = getattr(self,'file_pout')+'scan_'+str(n_par)+'/ip_seed_'+str(inp.ipseed)+'/'
                 try:
                     os.makedirs(inp.run_dir)
-                    if self.stat_run>1:
+                    if self.stat_run>1 and not i_aft:
                         while ipseed in  [int(files[8:]) for files in os.listdir(getattr(self,'file_pout')+'scan_'+str(n_par)) if os.path.isdir(getattr(self,'file_pout')+'scan_'+str(n_par)+'/'+files)]:
                             ipseed = np.random.randint(9999)
                             shutil.rmtree(inp.run_dir)
@@ -895,9 +904,9 @@ class FEL_simulation_block(object):
                     inp.lat =None
                     setattr(inp,'magin',0)
                 elif self.i_scan==0 and inp.f1st==np.rint(inp.fl/2) and A_input.latticefile ==None:
-                    inp.lat = A_undulator['Magnetic Lattice']
-                    setattr(inp,'magin',1)
-                    #setattr(inp,'magin',0)
+                    #inp.lat = A_undulator['Magnetic Lattice']
+                    #setattr(inp,'magin',1)
+                    setattr(inp,'magin',0)
                 elif A_input.latticefile !=None:
                     setattr(inp,'magin',1)
                     setattr(inp,'latticefile',getattr(A_input,'latticefile'))
@@ -978,10 +987,12 @@ class FEL_simulation_block(object):
 
         brightness,bw_std = get_brightness_bandwidth(g)
         photon_flux = np.array([psat*apar[3]/(10*bw_std[iph]*h_J_s*speed_of_light) \
-                              for iph,psat in enumerate(np.average(g.p_int,axis=0))])
+                              for iph,psat in enumerate(np.amax(g.p_int,axis=0))])
 
 
         #brightness_2 = np.array([1e-12*photon_f/np.square(apar[3]) for  photon_f in photon_flux])
+        #brightness_2 = np.array([4*photon_flux[i]/(1e-12*np.square(apar[3]))\
+        #                         for i in np.arange(g.z.shape[0])])
         brightness_2 = np.array([photon_flux[i]/(4*np.square(np.pi)*sigma_xx[i]*sigma_yy[i]*sigma_xpr[i]*sigma_ypr[i])\
                                  for i in np.arange(g.z.shape[0])])
         return {'z':np.array(g.z),'brightness':brightness_2,'bw_std':np.array(bw_std)}

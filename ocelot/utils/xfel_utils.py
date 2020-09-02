@@ -32,10 +32,10 @@ class StokesParameters:
         self.s1 = np.array([])
         self.s2 = np.array([])
         self.s3 = np.array([])
-    
+
     def __getitem__(self,i):
         S = StokesParameters() # start from emply object to save space
-        
+
         shape = self.s0.shape
         #_logger.log(5, ind_str + 'Stokes slicing index all' + str(i))
         if isinstance(i, tuple):
@@ -51,7 +51,7 @@ class StokesParameters:
                 if dim == 2:
                     if np.size(self.sc_x)>1:
                         S.sc_x = self.sc_x[i1i]
-            
+
             # if len(i1) == 3:
                 # S.sc_z, S.sc_y, S.sc_x = self.sc_z[i1[0]], self.sc_y[i1[1]], self.sc_x[i1[2]]
             # elif len(i1) == 2:
@@ -62,7 +62,7 @@ class StokesParameters:
                 # raise ValueError
         elif isinstance(i, slice) or isinstance(i, int):
             S.sc_z = self.sc_z[i]
-        
+
         # opy all possible attributes
         for attr in dir(self):
             if attr.startswith('__') or callable(getattr(self,attr)) or attr in ['sc_z', 'sc_x', 'sc_y']:
@@ -77,9 +77,9 @@ class StokesParameters:
         # S.s1 = self.s1[i]
         # S.s2 = self.s2[i]
         # S.s3 = self.s3[i]
-        
+
         return S
-    
+
     def P_pol(self):
         #coherent part
         return np.sqrt(self.s1**2 + self.s2**2 + self.s3**2)
@@ -116,7 +116,7 @@ class StokesParameters:
             psi[idx1] += np.pi/2
             psi[idx2] -= np.pi/2
         return psi
-    
+
     def slice_2d(self, loc, plane='z'):
         #_logger.debug('slicing stokes matrix at location {} over {} plane'.format(loc, plane))
         if plane in ['x', 2]:
@@ -133,7 +133,7 @@ class StokesParameters:
             raise ValueError('argument "plane" should be in ["x","y","z",0,1,2]')
         idx = find_nearest_idx(scale, loc)
         return slice_2d_idx(self, idx, plane)
-    
+
     def slice_2d_idx(self, idx, plane='z'):
         #_logger.debug('slicing stokes matrix at index {} over {} plane'.format(idx, plane))
         #speedup by aboiding deepcopy
@@ -169,7 +169,7 @@ class StokesParameters:
             #_logger.error(ind_str + 'argument "axis" is not defined')
             raise ValueError('argument "axis" is not defined')
         return S
-    
+
     def proj(self, plane='x', mode='sum'):
         #_logger.debug('calculating projection of stokes matrix over {} plane'.format(plane))
         S = deepcopy(self)
@@ -189,12 +189,12 @@ class StokesParameters:
         else:
             #_logger.error(ind_str + 'argument "plane" should be in ["x","y","z",0,1,2]')
             raise ValueError('argument "plane" should be in ["x","y","z",0,1,2]')
-        
+
         S.s0 = np.sum(self.s0, axis=plane, keepdims=1)
         S.s1 = np.sum(self.s1, axis=plane, keepdims=1)
         S.s2 = np.sum(self.s2, axis=plane, keepdims=1)
         S.s3 = np.sum(self.s3, axis=plane, keepdims=1)
-        
+
         if mode == 'sum':
             return S
         elif mode == 'mean':
@@ -213,7 +213,7 @@ class StokesParameters:
 #        self.s1 = np.array([])
 #        self.s2 = np.array([])
 #        self.s3 = np.array([])
-#        
+#
 #    def __getitem__(self,i):
 #        S = deepcopy(self)
 #        if self.s0.ndim == 1:
@@ -223,7 +223,7 @@ class StokesParameters:
 #        S.s2 = self.s2[i]
 #        S.s3 = self.s3[i]
 #        return S
-#        
+#
 #    def s_coh(self):
 #        #coherent part
 #        return np.sqrt(self.s1**2 + self.s2**2 + self.s3**2)
@@ -249,12 +249,12 @@ class StokesParameters:
 #            psi[idx1] += np.pi/2
 #            psi[idx2] -= np.pi/2
 #        return psi
-#        
+#
 def bin_stokes(S, bin_size):
-    
+
     if type(S) != StokesParameters:
         raise ValueError('Not a StokesParameters object')
-    
+
     S1 = StokesParameters()
     S1.sc = bin_scale(S.sc, bin_size)
     S1.s0 = bin_array(S.s0, bin_size)
@@ -262,43 +262,43 @@ def bin_stokes(S, bin_size):
     S1.s2 = bin_array(S.s2, bin_size)
     S1.s3 = bin_array(S.s3, bin_size)
     return S1
-    
+
 def calc_stokes_out(out1, out2, pol='rl', on_axis=True):
     if pol != 'rl':
         raise ValueError('Not implemented yet')
-    
+
     if on_axis:
         a1=np.sqrt(np.array(out1.p_mid[:, -1])) # +
         a2=np.sqrt(np.array(out2.p_mid[:, -1])) # -
     else:
         a1=np.sqrt(np.array(out1.p_int[:, -1])) # +
         a2=np.sqrt(np.array(out2.p_int[:, -1])) # -
-    
+
     f1=np.array(out1.phi_mid[:,-1])
     f2=np.array(out2.phi_mid[:,-1])
     if np.equal(out1.s, out2.s).all():
         s = out2.s
     else:
         raise ValueError('Different scales')
-    
+
     E1x = a1 * exp(1j * f1)
     E1y = E1x * 1j
     E2x = a2 * exp(1j * f2)
     E2y = E2x * (-1j)
-    
+
     Ex = (E1x + E2x) / sqrt(2)
     Ey = (E1y + E2y) / sqrt(2)
-    
+
     S = calc_stokes(Ex,Ey,s)
-    
+
     return S
-    
+
 
 #def calc_stokes_dfl(dfl1, dfl2, pol='rl', mode=(0,0)):
 #    #mode: (average_longitudinally, sum_transversely)
 #    if pol != 'rl':
 #        raise ValueError('Not implemented yet')
-#    
+#
 #    if len(dfl1.fld) != len(dfl2.fld):
 #        l1 = len(dfl1.fld)
 #        l2 = len(dfl2.fld)
@@ -311,10 +311,10 @@ def calc_stokes_out(out1, out2, pol='rl', on_axis=True):
 #    s = dfl1.scale_z()
 #    # else:
 #        # raise ValueError('Different scales')
-#    
+#
 #    Ex = (dfl1.fld + dfl2.fld) / sqrt(2)                #(E1x + E2x) /sqrt(2)
 #    Ey = (dfl1.fld * 1j + dfl2.fld * (-1j)) / sqrt(2)   #(E1y + E2y) /sqrt(2)
-#    
+#
 #    S = calc_stokes(Ex,Ey,s)#
 
 #    if mode[1]:
@@ -323,25 +323,25 @@ def calc_stokes_out(out1, out2, pol='rl', on_axis=True):
 #        # S.s1 = np.sum(S.s1,axis=(1,2))
 #        # S.s2 = np.sum(S.s2,axis=(1,2))
 #        # S.s3 = np.sum(S.s3,axis=(1,2))
-#    
+#
 #    if mode[0]:
 #        S = average_stokes_l(S)
 
 #    return S
 
-############ HMCCC new version of OCELOT    
+############ HMCCC new version of OCELOT
 def calc_stokes_dfl(dfl1, dfl2, basis='xy', mode=(0,0)):
     '''
     mode: (average_longitudinally, sum_transversely)
     '''
-    
+
 #    _logger.info('calculating Stokes parameters from dfl')
 #    _logger.debug(ind_str + 'dfl1 {}:'.format(dfl1.fld.shape) + str(dfl1.filePath) + ' ' + str(dfl1))
 #    _logger.debug(ind_str + 'dfl2 {}:'.format(dfl2.fld.shape) + str(dfl2.filePath) + ' ' + str(dfl2))
 
     # if basis != 'xy':
         # raise ValueError('Not implemented yet')
-    
+
     if dfl1.Nz() != dfl2.Nz():
         dfl1 = deepcopy(dfl1)
         dfl2 = deepcopy(dfl2)
@@ -358,14 +358,14 @@ def calc_stokes_dfl(dfl1, dfl2, basis='xy', mode=(0,0)):
     s = (dfl1.scale_z(), dfl1.scale_x(), dfl1.scale_y())
     # else:
         # raise ValueError('Different scales')
-    
+
     # Ex = (dfl1.fld + dfl2.fld) / np.sqrt(2)                #(E1x + E2x) /np.sqrt(2)
     # Ey = (dfl1.fld * 1j + dfl2.fld * (-1j)) / np.sqrt(2)   #(E1y + E2y) /np.sqrt(2)
-    
+
     S = calc_stokes(dfl1.fld, dfl2.fld, basis=basis)
     S.sc = None
     S.sc_z, S.sc_x, S.sc_y = dfl1.scale_z(), dfl1.scale_x(), dfl1.scale_y()
-    
+
     if mode[1]:
 #        _logger.info(ind_str + 'summing transversely')
         S = sum_stokes_tr(S)
@@ -373,94 +373,94 @@ def calc_stokes_dfl(dfl1, dfl2, basis='xy', mode=(0,0)):
         # S.s1 = np.sum(S.s1,axis=(1,2))
         # S.s2 = np.sum(S.s2,axis=(1,2))
         # S.s3 = np.sum(S.s3,axis=(1,2))
-    
+
     if mode[0]:
 #        _logger.info(ind_str + 'averageing longitudinally')
         S = average_stokes_l(S)
 #    _logger.info(ind_str + 'done')
     return S
-    
-    
+
+
 def calc_stokes(E1, E2, s=None, basis='xy'):
 #    _logger.info('calculating Stokes parameters')
 #    _logger.info(ind_str + 'basis = "{}"'.format(basis))
     if E1.shape != E2.shape:
         raise ValueError('Ex and Ey dimentions do not match')
-    
+
     S = StokesParameters()
-    
+
     if s is None:
         s = np.arange(E1.size)
-    
-    if basis == 'lr' or basis == 'rl': 
+
+    if basis == 'lr' or basis == 'rl':
         if basis == 'lr':
             E1, E2 = E2, E1
         Er, El = E1, E2
-        
+
         Er_ = np.conj(Er)
         El_ = np.conj(El)
-        
+
         E1 = Er*Er_
         E2 = El*El_
         E3 = Er*El_
         E4 = El*Er_
         del (Er, El, Er_, El_)
-        
+
         Jxx = E1 + E2 + E3 + E4
         Jyy = E1 + E2 - E3 - E4
         Jxy = (-1j) * (E1 - E2 - E3 + E4)
         Jyx = np.conj(Jxy)
         del (E1, E2, E3, E4)
-#        Jxx = Er*Er_ + El*El_ + Er*El_ + El*Er_ 
+#        Jxx = Er*Er_ + El*El_ + Er*El_ + El*Er_
 #        Jyy = Er*Er_ + El*El_ - Er*El_ - El*Er_
 #        Jxy = (-1j)*(Er*Er_ - El*El_ - Er*El_ + El*Er_)
 #        Jyx = np.conj(Jxy)
-#        
+#
 #        del (Er_, El_, Er, El)
-    
-    elif basis == 'yx' or basis == 'xy': 
+
+    elif basis == 'yx' or basis == 'xy':
         if basis == 'yx':
             E1, E2 = E2, E1
         Ex, Ey = E1, E2
-        
+
         Ex_ = np.conj(Ex)
         Ey_ = np.conj(Ey)
-        
+
         Jxx = Ex * Ex_
         Jxy = Ex * Ey_
         Jyx = Ey * Ex_
         Jyy = Ey * Ey_
-        
+
         del (Ex_, Ey_, Ex, Ey)
-        
+
 #    else:
 #        msg = 'basis should be in ["lr", "rl", "xy", "yx"]'
 #        _logger.error(msg)
 #        raise ValueError(msg)
-        
-    
+
+
     S.sc = s
     S.s0 = np.real(Jxx + Jyy)
     S.s1 = np.real(Jxx - Jyy)
     S.s2 = np.real(Jxy + Jyx)
     S.s3 = np.real(1j * (Jyx - Jxy))
-    
+
     return S
-    
+
 def average_stokes_l(S, sc_range=None):
-    
+
 #    if type(S) != StokesParameters:
 #        raise ValueError('Not a StokesParameters object')
-    
+
     if sc_range is None:
         sc_range = [S.sc_z[0], S.sc_z[-1]]
 
     idx1 = np.where(S.sc_z >= sc_range[0])[0][0]
     idx2 = np.where(S.sc_z <= sc_range[-1])[0][-1]
-    
+
     if idx1 == idx2:
         return S[idx1]
-    
+
     S1 = StokesParameters()
     S1.sc_z = np.mean(S.sc_z[idx1:idx2], axis=0)
     S1.sc_x = S.sc_x
@@ -470,9 +470,9 @@ def average_stokes_l(S, sc_range=None):
     S1.s2 = np.mean(S.s2[idx1:idx2], axis=0)
     S1.s3 = np.mean(S.s3[idx1:idx2], axis=0)
     return S1
-    
+
 def sum_stokes_tr(S):
-    
+
 #    if type(S) != StokesParameters:
 #        raise ValueError('Not a StokesParameters object')
     if S.s0.ndim == 1:
@@ -486,53 +486,53 @@ def sum_stokes_tr(S):
         S1.s1 = np.sum(S.s1,axis=(-1,-2))
         S1.s2 = np.sum(S.s2,axis=(-1,-2))
         S1.s3 = np.sum(S.s3,axis=(-1,-2))
-        
+
     return S1
 ####################################################
-    
-    
+
+
 #def calc_stokes(Ex,Ey,s=None):
-    
+
 #    if len(Ex) != len(Ey):
 #        raise ValueError('Ex and Ey dimentions do not match')
-#        
+#
 #    if s is None:
 #        s = np.arange(len(Ex))
-#    
+#
 #    Ex_ = np.conj(Ex)
 #    Ey_ = np.conj(Ey)
-#    
+#
 #    Jxx = Ex * Ex_
 #    Jxy = Ex * Ey_
 #    Jyx = Ey * Ex_
 #    Jyy = Ey * Ey_
-#    
+#
 #    del (Ex_,Ey_)
-#    
+#
 #    S = StokesParameters()
 #    S.sc = s
 #    S.s0 = np.real(Jxx + Jyy)
 #    S.s1 = np.real(Jxx - Jyy)
 #    S.s2 = np.real(Jxy + Jyx)
 #    S.s3 = np.real(1j * (Jyx - Jxy))
-    
+
 #    return S
-    
+
 #def average_stokes_l(S,sc_range=None):
-#    
+#
 #    #if type(S) != StokesParameters:
 #    if not isinstance(S,StokesParameters): #HMCC
 #        raise ValueError('Not a StokesParameters object')
-#    
+#
 #    if sc_range is None:
 #        sc_range = [S.sc[0], S.sc[-1]]##
 
 #    idx1 = np.where(S.sc >= sc_range[0])[0][0]
 #    idx2 = np.where(S.sc <= sc_range[-1])[0][-1]
-#    
+#
 #    if idx1 == idx2:
 #        return S[idx1]
-    
+
 #    S1 = StokesParameters()
 #    S1.sc = np.mean(S.sc[idx1:idx2], axis=0)
 #    S1.s0 = np.mean(S.s0[idx1:idx2], axis=0)
@@ -540,9 +540,9 @@ def sum_stokes_tr(S):
 #    S1.s2 = np.mean(S.s2[idx1:idx2], axis=0)
 #    S1.s3 = np.mean(S.s3[idx1:idx2], axis=0)
 #    return S1
-    
+
 #def sum_stokes_tr(S):
-#    
+#
 #    #if type(S) != StokesParameters:
 #    if not isinstance(S,StokesParameters): #HMCC
 #        raise ValueError('Not a StokesParameters object')
@@ -555,18 +555,18 @@ def sum_stokes_tr(S):
 #        S1.s1 = np.sum(S.s1,axis=(-1,-2))
 #        S1.s2 = np.sum(S.s2,axis=(-1,-2))
 #        S1.s3 = np.sum(S.s3,axis=(-1,-2))
-        
+
 #    return S1
-    
-    
+
+
 class WignerDistribution():
     '''
     calculated wigner distribution (spectrogram) of the pulse
     in time/frequency domain as space/wavelength
     '''
-    
-    
-    
+
+
+
     def __init__(self):
         # self.fld=np.array([]) #(z,y,x)
         self.field = []
@@ -576,20 +576,20 @@ class WignerDistribution():
         self.freq_lamd = []  # frequency scale
         self.xlamds = 0  # wavelength, [nm]
         self.filePath = ''
-    
+
     def power(self):
         return np.sum(self.wig,axis=0)
-        
+
     def spectrum(self):
         return np.sum(self.wig,axis=1)
-        
+
     def energy(self):
         return np.sum(self.wig)*abs(self.s[1]-self.s[0])/speed_of_light
-        
+
     def fileName(self):
         from ocelot.adaptors.genesis import filename_from_path
         return filename_from_path(self.filePath)
-        
+
     def eval(self,method = 'np'):
         ds = self.s[1] - self.s[0]
         self.wig = calc_wigner(self.field, method=method, debug=1)
@@ -597,7 +597,7 @@ class WignerDistribution():
         freq_ev = np.fft.fftshift(freq_ev, axes=0)
         self.freq_lamd = h_eV_s * speed_of_light * 1e9 / freq_ev
 
-    
+
 def background(command):
     '''
     start command as background process
@@ -633,38 +633,38 @@ def generate_dfl(xlamds, shape=(151,151,1000), dgrid=(1e-3,1e-3,None), power_rms
     energy,power = total energy or max power of the pulse, use only one
     '''
     start = time.time()
-    
+
     if shape[2] == None:
         shape = (shape[0],shape[1],int(dgrid[2]/xlamds/zsep))
-        
-        
+
+
     if debug > 0:
         print('    generating radiation field', tuple(reversed(shape)))
-    
+
     dfl = RadiationField(tuple(reversed(shape)))
-    
+
     k = 2*pi / xlamds
-    
+
     dfl.xlamds = xlamds
     dfl.domain_z = 't'
     dfl.domain_xy = 's'
     dfl.dx = dgrid[0] / dfl.Nx()
     dfl.dy = dgrid[1] / dfl.Ny()
     dfl.dz = xlamds * zsep
-    
+
     rms_x, rms_y, rms_z = power_rms # intensity rms [m]
     xp, yp = power_angle
     x0, y0, z0 = power_center
     zx, zy = power_waistpos
-    
+
     if z0 == None:
         z0 = dfl.Lz()/2
-    
+
     x = np.linspace(-dfl.Lx()/2, dfl.Lx()/2, dfl.Nx())
     y = np.linspace(-dfl.Ly()/2, dfl.Ly()/2, dfl.Ny())
     z = np.linspace(0, dfl.Lz(), dfl.Nz())
     z, y, x = np.meshgrid(z,y,x, indexing='ij')
-    
+
     qx = 1j*pi*(2*rms_x)**2/xlamds + zx
     qy = 1j*pi*(2*rms_y)**2/xlamds + zy
     qz = 1j*pi*(2*rms_z)**2/xlamds
@@ -675,8 +675,8 @@ def generate_dfl(xlamds, shape=(151,151,1000), dgrid=(1e-3,1e-3,None), power_rms
         print('   z ', (z[-1,0,0], z[0,0,0]))
         print('   calculated chirp ', freq_chirp)
         wavelength = np.mean([wavelength[0], wavelength[1]])
-        
-      
+
+
     if wavelength == None and xp == 0 and yp == 0:
         phase_chirp_lin = 0
     elif wavelength == None:
@@ -684,32 +684,32 @@ def generate_dfl(xlamds, shape=(151,151,1000), dgrid=(1e-3,1e-3,None), power_rms
     else:
         phase_chirp_lin = (z-z0)/dfl.dz * (dfl.xlamds-wavelength)/wavelength*xlamds * zsep + x*sin(xp) + y*sin(yp)
 
-    
+
     if freq_chirp == 0:
         phase_chirp_quad = 0
     else:
         phase_chirp_quad = freq_chirp *((z-z0)/dfl.dz*zsep)**2 * xlamds / 2# / pi**2
-    
+
 
     if qz == 0 or qz == None:
         dfl.fld = exp(-1j * k * ( (y-x0)**2/2/qx + (x-y0)**2/2/qy - phase_chirp_lin + phase_chirp_quad ) )
     else:
-        dfl.fld = exp(-1j * k * ( (y-x0)**2/2/qx + (x-y0)**2/2/qy + (z-z0)**2/2/qz - phase_chirp_lin + phase_chirp_quad) ) #  - (grid[0]-z0)**2/qz 
+        dfl.fld = exp(-1j * k * ( (y-x0)**2/2/qx + (x-y0)**2/2/qy + (z-z0)**2/2/qz - phase_chirp_lin + phase_chirp_quad) ) #  - (grid[0]-z0)**2/qz
 
-    
+
     if energy != None and power == None:
         dfl.fld *= sqrt(energy / dfl.E())
     elif energy == None and power != None:
         dfl.fld *= sqrt(power / np.amax(dfl.int_z()))
     else:
         raise ValueError('Either energy or power should be defined')
-    
+
     dfl.filePath = ''
-    
+
     t_func = time.time() - start
     if debug > 0:
         print('      done in %.2f ' % t_func + 'sec')
-    
+
     return dfl
 
 def dfl_ap(dfl, ap_x=None, ap_y=None, debug=1):
@@ -718,49 +718,49 @@ def dfl_ap(dfl, ap_x=None, ap_y=None, debug=1):
     '''
     if debug > 0:
         print('    applying aperture to dfl')
-        
+
     if size(ap_x) == 1:
         ap_x = [-ap_x/2, ap_x/2]
     if size(ap_y) == 1:
         ap_y = [-ap_y/2, ap_y/2]
-        
+
     idx_x = np.where( (dfl.scale_x() >= ap_x[0]) & (dfl.scale_x() <= ap_x[1]) )[0]
     idx_x1 = idx_x[0]
     idx_x2 = idx_x[-1]
-    
+
     idx_y = np.where( (dfl.scale_y() >= ap_y[0]) & (dfl.scale_y() <= ap_y[1]) )[0]
     idx_y1 = idx_y[0]
     idx_y2 = idx_y[-1]
-    
+
     mask = np.zeros_like(dfl.fld[0, :, :])
     mask[idx_x1:idx_x2, idx_y1:idx_y2] = 1
     mask_idx = np.where(mask == 0)
-    
+
     dfl_out = deepcopy(dfl)
     dfl_out.fld[:, mask_idx[0], mask_idx[1]] = 0
-    
+
     if debug > 0:
         print('      %.2f%% energy left' %( dfl_out.E() / dfl.E() ))
     # tmp_fld = dfl.fld[:,idx_x1:idx_x2,idx_y1:idx_y2]
-    
+
     # dfl_out.fld[:] = np.zeros_like(dfl_out.fld)
     # dfl_out.fld[:,idx_x1:idx_x2,idx_y1:idx_y2] = tmp_fld
     return dfl_out
-    
-    
+
+
 
 def dfl_prop(dfl, z, fine=1, debug=1):
     '''
     Fourier propagator for fieldfile
 
     can handle wide spectrum
-      (every slice in freq.domain is propagated 
+      (every slice in freq.domain is propagated
        according to its frequency)
     no kx**2+ky**2<<k0**2 limitation
 
     dfl is the RadiationField() object
-    z is the propagation distance in [m] 
-    fine==0 is a flag for ~2x faster propagation. 
+    z is the propagation distance in [m]
+    fine==0 is a flag for ~2x faster propagation.
         no Fourier transform to frequency domain is done
         assumes no angular dispersion (true for plain FEL radiation)
         assumes narrow spectrum at center of xlamds (true for plain FEL radiation)
@@ -771,11 +771,11 @@ def dfl_prop(dfl, z, fine=1, debug=1):
     '''
     if debug > 0:
         print('    propagating dfl file by %.2f meters' % (z))
-    
+
     if z == 0:
         print('      returning original')
         return dfl
-    
+
     start = time.time()
 
     dfl_out = deepcopy(dfl)
@@ -816,7 +816,7 @@ def dfl_prop(dfl, z, fine=1, debug=1):
 
 def dfl_waistscan(dfl, z_pos, projection=0, debug=1):
     '''
-    propagates the RadaitionField object dfl 
+    propagates the RadaitionField object dfl
     through the sequence of positions z_pos
     and calculates transverse distribution parameters
     such as peak photon density and sizes in both dimentions
@@ -869,13 +869,13 @@ def dfl_waistscan(dfl, z_pos, projection=0, debug=1):
 
 
 def dfl_interp(dfl, interpN=(1, 1), interpL=(1, 1), newN=(None, None), newL=(None, None), method='cubic', debug=1):
-    ''' 
-    2d interpolation of the coherent radiation distribution 
-    interpN and interpL define the desired interpolation coefficients for  
-    transverse point __density__ and transverse mesh __size__ correspondingly 
-    newN and newL define the final desire number of points and size of the mesh 
-    when newN and newL are not None interpN and interpL values are ignored 
-    coordinate convention is (x,y) 
+    '''
+    2d interpolation of the coherent radiation distribution
+    interpN and interpL define the desired interpolation coefficients for
+    transverse point __density__ and transverse mesh __size__ correspondingly
+    newN and newL define the final desire number of points and size of the mesh
+    when newN and newL are not None interpN and interpL values are ignored
+    coordinate convention is (x,y)
     '''
     from scipy.interpolate import interp2d
 
@@ -916,7 +916,7 @@ def dfl_interp(dfl, interpN=(1, 1), interpL=(1, 1), newN=(None, None), newL=(Non
         elif interpNx == 1 and interpNy == 1 and interpLx == 1 and interpLy == 1:
             return dfl
             print('      skip (no interpolation required, returning original)')
-        
+
         # elif interpNx == 1 and interpNy == 1 and interpLx <= 1 and interpLy <= 1:
             # implement pad or cut if Lx1/Nx1==Lx2/Nx2 and Ly1/Ny1==Ly2/Ny2:
             # print('      cutting original')
@@ -926,23 +926,23 @@ def dfl_interp(dfl, interpN=(1, 1), interpL=(1, 1), newN=(None, None), newL=(Non
             # nx2=int(Nx1-(Nx1-Nx2)/2)
             # dfl.fld=dfl.fld[:,ny1:ny2,nx1:nx2]
             # return dfl
-        
+
         else:
-            
+
             Nx2 = int(dfl.Nx() * interpNx * interpLx)
             if Nx2 % 2 == 0 and Nx2 > dfl.Nx():
                 Nx2 -= 1
             if Nx2 % 2 == 0 and Nx2 < dfl.Nx():
                 Nx2 += 1
-            
-            
+
+
             Ny2 = int(dfl.Ny() * interpNy * interpLy)
             if Ny2 % 2 == 0 and Ny2 > dfl.Ny():
                 Ny2 -= 1
             if Ny2 % 2 == 0 and Ny2 < dfl.Ny():
                 Ny2 += 1
 
-            
+
             Lx2 = dfl.Lx() * interpLx
             Ly2 = dfl.Ly() * interpLy
 
@@ -967,14 +967,14 @@ def dfl_interp(dfl, interpN=(1, 1), interpL=(1, 1), newN=(None, None), newL=(Non
             Ly2 = newL[1]
         else:
             Ly2 = dfl.Ly()
-    
+
     # if debug>0:
         # print('Lx1=%e, Ly1=%e' %(Lx1,Ly1))
         # print('Lx2=%e, Ly2=%e' %(Lx2,Ly2))
         # print('Nx1=%s, Ny1=%s' %(Nx1,Ny1))
         # print('Nx2=%s, Ny2=%s' %(Nx2,Ny2))
-    
-    
+
+
     xscale1 = np.linspace(-dfl.Lx() / 2, dfl.Lx() / 2, dfl.Nx())
     yscale1 = np.linspace(-dfl.Ly() / 2, dfl.Ly() / 2, dfl.Ny())
     xscale2 = np.linspace(-Lx2 / 2, Lx2 / 2, Nx2)
@@ -998,12 +998,12 @@ def dfl_interp(dfl, interpN=(1, 1), interpL=(1, 1), newN=(None, None), newL=(Non
         P2 = sum(abs(fslice2)**2)
         if debug > 1:
             print('      P1,P2 = %e %e' %(P1,P2))
-        
+
         if P2!=0:
             fslice2 = fslice2 * sqrt(P1 / P2)
         else:
             fslice2 = fslice2 * 0
-        
+
         fld2.append(fslice2)
 
     dfl2 = deepcopy(dfl)
@@ -1072,10 +1072,10 @@ def dfl_pad_z(dfl, padn):
     return dfl_pad
 
 def dfl_cut_z(dfl,z=[-np.inf,np.inf],debug=1):
-    
+
     if debug>0:
         print ('    cutting radiation file')
-        
+
     if dfl.__class__ != RadiationField:
         raise ValueError('wrong radiation object: should be RadiationField')
 
@@ -1267,11 +1267,11 @@ def dfl_hxrss_filt(dfl, trf, s_delay, st_cpl=1, enforce_padn=None, res_per_fwhm=
     padn = np.ceil(dk_old / dk).astype(int)
     if np.mod(padn, 2) == 0 and padn != 0:  # check for odd
         padn = int(padn + 1)
-    
+
     if enforce_padn!=None:
         padn=enforce_padn
-        
-        
+
+
     if dump_proj:
 
         dfl = dfl_pad_z(dfl, padn)
@@ -1366,55 +1366,55 @@ def save_trf(trf, attr, flePath):
     np.savetxt(f, np.c_[trf.ev(), np.abs(trf.tr), np.angle(trf.tr)], header=header, fmt="%.8e", newline='\n', comments='')
     f.close()
 
-    
-def calc_wigner(field, method='mp', nthread=multiprocessing.cpu_count(), debug=1):    
+
+def calc_wigner(field, method='mp', nthread=multiprocessing.cpu_count(), debug=1):
     '''
     calculation of the Wigner distribution
     input should be an amplitude and phase of the radiation as list of complex numbers with length N
     output is a real value of wigner distribution
     '''
-    
+
     N0 = len(field)
-    
+
     if np.amin(field) == 0 and np.amax(field) == 0:
         return np.zeros((N0,N0))
-    
-    if N0 % 2: 
+
+    if N0 % 2:
         field = np.append(field, 0)
-    N = len(field) 
+    N = len(field)
 
     field = np.tile(field, (N, 1))
     F1 = field
     F2 = deepcopy(F1)
-    
-    if debug > 1: 
+
+    if debug > 1:
         print('fields created')
-    
+
     for i in range(N):
         ind1 = -int(np.floor((N/2-i)/2))
         ind2 = int(np.ceil((N/2-i)/2))
         F1[i] = np.roll(F1[i],ind1)
         F2[i] = np.roll(F2[i],ind2)
-        if debug > 1: 
+        if debug > 1:
             print(i, 'of', N)
-        
+
     if debug > 1: print('fft_start')
-    
+
     wig = np.fft.fftshift(np.conj(F1)*F2,0)
-    
+
     if debug > 1: print('fft_done')
-    
+
     if method == 'np':
         wig = np.fft.fft(wig, axis=0)
     # HMCC elif method == 'mp':
     #    fft = pyfftw.builders.fft(wig, axis=0, overwrite_input=False, planner_effort='FFTW_ESTIMATE', threads=nthread, auto_align_input=False, auto_contiguous=False, avoid_copy=True)
     #    wig = fft()
-    
+
     wig = np.fft.fftshift(wig, 0)
     wig = wig[0:N0, 0:N0] / N
 
     return np.real(wig)
-    
+
 def wigner_pad(wig,pad):
     wig_out = deepcopy(wig)
     n_add = wig_out.s.size * (pad-1) / 2
@@ -1436,13 +1436,13 @@ def wigner_out(out, z=inf, method='np', pad=1, debug=1):
     #if not isinstance(out,GenesisOutput):
     #   raise ValueError('Not a GenesisOutput object')
     #assert len(out.s)>0
-    
-    
-    if debug>0: 
+
+
+    if debug>0:
         print('    calculating Wigner distribution')
     start_time = time.time()
-    
-    if z == 'end': 
+
+    if z == 'end':
         z = np.inf
     if z == np.inf:
         z = np.amax(out.z)
@@ -1458,10 +1458,10 @@ def wigner_out(out, z=inf, method='np', pad=1, debug=1):
     wig.xlamds = out('xlamds')
     wig.filePath = out.filePath
     wig.z = z
-    
+
     if pad > 1:
         wig = wigner_pad(wig,pad)
-    
+
     wig.eval() #calculate wigner parameters based on its attributes
     # ds = wig.s[1] - wig.s[0]
     # wig.wig = calc_wigner(wig.field, method=method, debug=debug)
@@ -1470,24 +1470,24 @@ def wigner_out(out, z=inf, method='np', pad=1, debug=1):
     # wig.freq_lamd = h_eV_s * speed_of_light * 1e9 / freq_ev
 
 #    wig.energy= np.mean(out.p_int[:, -1], axis=0) * out('xlamds') * out('zsep') * out.nSlices / speed_of_light
-    
-    if debug>0: 
+
+    if debug>0:
         print('      done in %.2f seconds' % (time.time() - start_time))
-    
+
     return wig
-    
+
 def wigner_dfl(dfl, method='mp', pad=1, debug=1):
     '''
     returns on-axis WignerDistribution from dfl file
     '''
     assert isinstance(dfl,RadiationField)
-    
+
     import numpy as np
-    
-    if debug>0: 
+
+    if debug>0:
         print('    calculating Wigner distribution')
     start_time = time.time()
-    
+
     wig = WignerDistribution()
     wig.field = dfl[:,int(dfl.Ny()/2),int(dfl.Nx()/2)]
     wig.s = dfl.scale_z()
@@ -1496,7 +1496,7 @@ def wigner_dfl(dfl, method='mp', pad=1, debug=1):
 
     if pad > 1:
         wig = wigner_pad(wig,pad)
-    
+
     wig.eval() #calculate wigner parameters based on its attributes
 
     # wig.wig = calc_wigner(wig.field, method=method, debug=debug)
@@ -1505,12 +1505,12 @@ def wigner_dfl(dfl, method='mp', pad=1, debug=1):
     # wig.freq_lamd = h_eV_s * speed_of_light * 1e9 / freq_ev
 
     #    wig.energy= np.mean(out.p_int[:, -1], axis=0) * out('xlamds') * out('zsep') * out.nSlices / speed_of_light
-    
-    if debug>0: 
+
+    if debug>0:
         print('      done in %.2f seconds' % (time.time() - start_time))
-    
+
     return wig
-    
+
 def wigner_stat(out_stat, stage=None, z=inf, method='mp', debug=1):
     '''
     returns averaged WignerDistribution from GenStatOutput at stage at z
@@ -1523,11 +1523,11 @@ def wigner_stat(out_stat, stage=None, z=inf, method='mp', debug=1):
         pass
     else:
         raise ValueError('unknown object used as input')
-    
-    if debug>0: 
+
+    if debug>0:
         print('    calculating Wigner distribution')
     start_time = time.time()
-    
+
     if z == inf:
         z = np.amax(out_stat.z)
     elif z > np.amax(out_stat.z):
@@ -1535,12 +1535,12 @@ def wigner_stat(out_stat, stage=None, z=inf, method='mp', debug=1):
     elif z < np.amin(out_stat.z):
         z = np.amin(out_stat.z)
     zi = np.where(out_stat.z >= z)[0][0]
-    
+
     WW = np.zeros((shape(out_stat.p_int)[2],shape(out_stat.p_int)[1],shape(out_stat.p_int)[1]))
     for (i,n) in  enumerate(out_stat.run):
         field = sqrt(out_stat.p_int[zi,:,i]) * exp(1j*out_stat.phi_mid[zi,:,i])
         WW[i,:,:] = calc_wigner(field, method=method, debug=debug)
-    
+
     wig = WignerDistribution()
     wig.wig = np.mean(WW,axis=0)
     wig.s = out_stat.s
@@ -1549,12 +1549,12 @@ def wigner_stat(out_stat, stage=None, z=inf, method='mp', debug=1):
     wig.filePath = out_stat.filePath + 'results' + os.path.sep + 'stage_%s__WIG__' %(stage)
     wig.z = z
 #    wig.energy= np.mean(out.p_int[:, -1], axis=0) * out('xlamds') * out('zsep') * out.nSlices / speed_of_light
-    
-    if debug>0: 
+
+    if debug>0:
         print('      done in %.2f seconds' % (time.time() - start_time))
-    
+
         return wig
-    
+
 '''
 legacy
 '''

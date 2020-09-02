@@ -199,8 +199,9 @@ class GenesisInput:
     '''
 
     def __init__(self):
-
+  
         # defaults
+        self.betamatch = False  # HMCC betamatch flag
         self.stageid = None  # optional, handy with multi-stage scripts
         self.runid = 0  # important for statistical runs
         self.type = 'steady'
@@ -356,46 +357,47 @@ class GenesisInput:
         self.imagl = 0.0  # The length of each bending magnet of the chicane. If the magnet length is set to zero but IDRIL is not the resulting beam line correspond to a simple drift of the length 5 times IDRIL
         self.idril = 0.0  # The length of the 5 drift lengths of the magnetic chicane (three between the magnets and one before and after the magnets).
 
-        self.trama = 0  # Non zero value enables that a transport matrix is applied to the electron distribution when importing it with PARTFILE. The individual matrix is defined by ITRAM$$
-        self.itram11 = 1  # The pound signs are place holders for numbers between 1 and 6 (e.g. ITRAM21) and are defining the matrix element for the transport matrix, which is applied when importing a paticle distribution with the PARTFILE option. The matrix is defined in a standard way, acting on the vector (position in X, angle in X, position in Y, angle in Y, position in s, relative energy spread). The default value is the identity matrix.
-        self.itram12 = 0
-        self.itram13 = 0
-        self.itram14 = 0
-        self.itram15 = 0
-        self.itram16 = 0
-        self.itram21 = 0
-        self.itram22 = 1
-        self.itram23 = 0
-        self.itram24 = 0
-        self.itram25 = 0
-        self.itram26 = 0
-        self.itram31 = 0
-        self.itram32 = 0
-        self.itram33 = 1
-        self.itram34 = 0
-        self.itram35 = 0
-        self.itram36 = 0
-        self.itram41 = 0
-        self.itram42 = 0
-        self.itram43 = 0
-        self.itram44 = 1
-        self.itram45 = 0
-        self.itram46 = 0
-        self.itram51 = 0
-        self.itram52 = 0
-        self.itram53 = 0
-        self.itram54 = 0
-        self.itram55 = 1
-        self.itram56 = 0
-        self.itram61 = 0
-        self.itram62 = 0
-        self.itram63 = 0
-        self.itram64 = 0
-        self.itram65 = 0
-        self.itram66 = 1
-
-        self.iallharm = 0  # Setting the value to a non-zero value will also include all harmonics between 1 and NHARM
-        self.iharmsc = 0  # setting to a non-zero value includes the coupling of the harmonic radiation back to the electron beam for a self-consistent model of harmonics. Enabling this feature will automatically include all harmonics by setting IALLHARM to one.
+        
+        if self.betamatch == False:
+            self.iallharm = 0  # Setting the value to a non-zero value will also include all harmonics between 1 and NHARM
+            self.iharmsc = 0  # setting to a non-zero value includes the coupling of the harmonic radiation back to the electron beam for a self-consistent model of harmonics. Enabling this feature will automatically include all harmonics by setting IALLHARM to one.
+            self.trama = 0  # Non zero value enables that a transport matrix is applied to the electron distribution when importing it with PARTFILE. The individual matrix is defined by ITRAM$$
+            self.itram11 = 1  # The pound signs are place holders for numbers between 1 and 6 (e.g. ITRAM21) and are defining the matrix element for the transport matrix, which is applied when importing a paticle distribution with the PARTFILE option. The matrix is defined in a standard way, acting on the vector (position in X, angle in X, position in Y, angle in Y, position in s, relative energy spread). The default value is the identity matrix.
+            self.itram12 = 0
+            self.itram13 = 0
+            self.itram14 = 0
+            self.itram15 = 0
+            self.itram16 = 0
+            self.itram21 = 0
+            self.itram22 = 1
+            self.itram23 = 0
+            self.itram24 = 0
+            self.itram25 = 0
+            self.itram26 = 0
+            self.itram31 = 0
+            self.itram32 = 0
+            self.itram33 = 1
+            self.itram34 = 0
+            self.itram35 = 0
+            self.itram36 = 0
+            self.itram41 = 0
+            self.itram42 = 0
+            self.itram43 = 0
+            self.itram44 = 1
+            self.itram45 = 0
+            self.itram46 = 0
+            self.itram51 = 0
+            self.itram52 = 0
+            self.itram53 = 0
+            self.itram54 = 0
+            self.itram55 = 1
+            self.itram56 = 0
+            self.itram61 = 0
+            self.itram62 = 0
+            self.itram63 = 0
+            self.itram64 = 0
+            self.itram65 = 0
+            self.itram66 = 1
         self.isntyp = 0  # Non-zero if the user wants to use the Pennman algorithm for the shot noise (which is not recommended).
 
         self.ilog = 0  # Create a log file.
@@ -423,7 +425,7 @@ class GenesisInput:
 
         self.run_dir = None  # directory to run simulation in
         self.exp_dir = None  # if run_dir==None, it is created based on exp_dir
-        self.betamatch = False  # HMCC betamatch flag
+  
 
         self.inp_txt = inputTemplate
 
@@ -480,10 +482,48 @@ class GenesisInput:
         # else:
             # inp_txt = inp_txt.replace("__TRAMA__\n", "")
         if (self.betamatch == True):  # HMCC
-            inp_txt.replace("__TRAMA__\n", "")  # HMCC
-            for i_tr in self.__dict__.keys():  # HMCC
-                if i_tr.startswith('itram'):  # HMCC
-                    inp_txt = inp_txt.replace("__" + str(i_tr).upper() + "__", "")  # HMCC
+            inp_txt=inp_txt.replace("iharmsc = __IHARMSC__\n", '')
+            inp_txt=inp_txt.replace("iallharm = __IALLHARM__\n",'')
+            inp_txt=inp_txt.replace("trama = __TRAMA__\n",'')
+            inp_txt=inp_txt.replace("itram11 = __ITRAM11__\n",'')
+            inp_txt=inp_txt.replace("itram12 = __ITRAM12__\n",'')
+            inp_txt=inp_txt.replace("itram13 = __ITRAM13__\n",'')
+            inp_txt=inp_txt.replace("itram14 = __ITRAM14__\n",'')
+            inp_txt=inp_txt.replace("itram15 = __ITRAM15__\n",'')
+            inp_txt=inp_txt.replace("itram16 = __ITRAM16__\n",'')
+            inp_txt=inp_txt.replace("itram21 = __ITRAM21__\n",'')
+            inp_txt=inp_txt.replace("itram22 = __ITRAM22__\n",'')
+            inp_txt=inp_txt.replace("itram23 = __ITRAM23__\n",'')
+            inp_txt=inp_txt.replace("itram24 = __ITRAM24__\n",'')
+            inp_txt=inp_txt.replace("itram25 = __ITRAM25__\n",'')
+            inp_txt=inp_txt.replace("itram26 = __ITRAM26__\n",'')
+            inp_txt=inp_txt.replace("itram31 = __ITRAM31__\n",'')
+            inp_txt=inp_txt.replace("itram32 = __ITRAM32__\n",'')
+            inp_txt=inp_txt.replace("itram33 = __ITRAM33__\n",'')
+            inp_txt=inp_txt.replace("itram34 = __ITRAM34__\n",'')
+            inp_txt=inp_txt.replace("itram35 = __ITRAM35__\n",'')
+            inp_txt=inp_txt.replace("itram36 = __ITRAM36__\n",'')
+            inp_txt=inp_txt.replace("itram41 = __ITRAM41__\n",'')
+            inp_txt=inp_txt.replace("itram42 = __ITRAM42__\n",'')
+            inp_txt=inp_txt.replace("itram43 = __ITRAM43__\n",'')
+            inp_txt=inp_txt.replace("itram44 = __ITRAM44__\n",'')
+            inp_txt=inp_txt.replace("itram45 = __ITRAM45__\n",'')
+            inp_txt=inp_txt.replace("itram46 = __ITRAM46__\n",'')
+            inp_txt=inp_txt.replace("itram51 = __ITRAM51__\n",'')
+            inp_txt=inp_txt.replace("itram52 = __ITRAM52__\n",'')
+            inp_txt=inp_txt.replace("itram53 = __ITRAM53__\n",'')
+            inp_txt=inp_txt.replace("itram54 = __ITRAM54__\n",'')
+            inp_txt=inp_txt.replace("itram55 = __ITRAM55__\n",'')
+            inp_txt=inp_txt.replace("itram56 = __ITRAM56__\n",'')
+            inp_txt=inp_txt.replace("itram61 = __ITRAM61__\n",'')
+            inp_txt=inp_txt.replace("itram62 = __ITRAM62__\n",'')
+            inp_txt=inp_txt.replace("itram63 = __ITRAM63__\n",'')
+            inp_txt=inp_txt.replace("itram64 = __ITRAM64__\n",'')
+            inp_txt=inp_txt.replace("itram65 = __ITRAM65__\n",'')
+            inp_txt=inp_txt.replace("itram66 = __ITRAM66__\n", '')  # HMCC
+            #for i_tr in self.__dict__.keys():  # HMCC
+            #    if i_tr.startswith('itram'):  # HMCC
+            #        inp_txt = inp_txt.replace("__" + str(i_tr).upper() + "__", "")  # HMCC#
 
                     # inp_txt = inp_txt.replace("__TRAMA__\n", "")
 
@@ -2783,7 +2823,7 @@ def read_edist_file(filePath, debug=1):
     edist.xp = np.array(dist_column_values['XPRIME'])
     edist.yp = np.array(dist_column_values['YPRIME'])
     edist.t = np.array(dist_column_values['T'])
-    edist.g = np.array(dist_column_values['P'])
+    edist.g = np.array(dist_column_values['GAMMA'])
 
    # edist.x = np.flipud(edist.x) HMCC avoid the flipping of the current
    # edist.y = np.flipud(edist.y) HMCC avoid the flipping of the current

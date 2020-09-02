@@ -498,7 +498,10 @@ class MingXie(object):
         ref = []
         p_min_lsat = []
         beam_z = getattr(self, 'beam')
-        curr_mx = np.amax(beam_z.I)
+        if len(set(beam_z.I))> 1: 
+          curr_mx = np.amax(beam_z.I)
+        else:
+          curr_mx = beam_z.I[0]
         for i_sl in range(len(beam_z.z)):
             n_part.append(self.slice_npart(i_sl))
             if beam_z.I[i_sl] > 0.15 * curr_mx:
@@ -586,4 +589,4 @@ class MingXie(object):
 
                 f_text.write('%.15f\t' % getattr(self,'maxpulsee'))
                 f_text.write('%.8f\n' % np.average(getattr(self,'rho'),weights=beam_z.I))
-        return p_energy
+        return und_l,p_energy
