@@ -47,14 +47,14 @@ def plot_gen_out_all_paral(exp_dir, stage=1, savefig='png', debug=1):
     while(os.path.exists(dir)):
         print(i)
         file = dir + 'run.' + str(i) + '.s'+str(stage)+'.gout'
-        if(file): 
+        if(file):
             print('good',i)
             background('''plot_gen_out_all("'''+file+'''", choice=(1,1,1,1,0,0,0,0,0,0,0),debug='''+str(debug)+''')''')
-        
+
         i += 1
         dir = exp_dir + 'run_' + str(i) + '/'
         print(dir)
-    
+
     return
 
     # plot_gen_stat(proj_dir=exp_dir, run_inp=[], stage_inp=[], param_inp=[], s_param_inp=['p_int','energy','r_size_weighted'], z_param_inp=[], dfl_param_inp=[], s_inp=['max'], z_inp=[0,'end'], savefig=1, saveval=1, showfig=0, debug=0)
@@ -150,8 +150,8 @@ def plot_gen_out_all(handle=None, savefig='png', showfig=False, choice=(1, 1, 1,
                 except IOError:
                     pass
 
-            
-                
+
+
         if os.path.isfile(handle.filePath + '.dfl') and any(choice[5:8]):
             dfl = read_dfl_file_out(handle, debug=debug)
             if dfl.Nz()==0:
@@ -165,7 +165,7 @@ def plot_gen_out_all(handle=None, savefig='png', showfig=False, choice=(1, 1, 1,
                     f7 = plot_dfl(dfl, far_field=0, freq_domain=1, auto_zoom=0, showfig=showfig, savefig=savefig, debug=debug)
                 if choice[8]:
                     f8 = plot_dfl(dfl, far_field=1, freq_domain=1, auto_zoom=0, showfig=showfig, savefig=savefig, debug=debug)
-        
+
         if os.path.isfile(handle.filePath + '.dpa') and (choice[9] or choice[10]) and handle('itdp') == True:
             dpa = read_dpa_file_out(handle, debug=debug)
             if size(dpa.ph)==0:
@@ -177,7 +177,7 @@ def plot_gen_out_all(handle=None, savefig='png', showfig=False, choice=(1, 1, 1,
                 if choice[10]:
                     edist = dpa2edist(handle, dpa, num_part=5e4, smear=0, debug=debug)
                     f10 = plot_edist(edist, figsize=3, fig_name=None, savefig=savefig, showfig=showfig, bins=(100, 100, 300, 200), debug=debug)
-        
+
     if savefig != False:
         if debug > 0:
             print('    plots recorded to *.' + str(savefig) + ' files')
@@ -322,7 +322,7 @@ def plot_gen_out_z(g, figsize=(10, 14), legend=True, fig_name=None, z=inf, savef
     maxspectrum_index = np.argmax(g.spec[:, zi])
     maxspower_index = np.argmax(power[:, zi])
     maxspectrum_wavelength = g.freq_lamd[maxspectrum_index] * 1e-9
-    
+
     spectrum_lamdwidth_fwhm = None
     if np.sum(g.spec[:,zi])!=0:
         pos, width, arr = fwhm3(g.spec[:, zi])
@@ -691,14 +691,14 @@ def subfig_rad_spec(ax_spectrum, g, legend,colour='red', log=1):#HMCC
     ax_spectrum.text(0.5, 0.98, r"(on axis)", fontsize=10, horizontalalignment='center', verticalalignment='top', transform=ax_spectrum.transAxes)  # horizontalalignment='center', verticalalignment='center',
     ax_spectrum.set_ylabel(r'P$(\lambda)_{max}$ [a.u.]')
     plt.yticks(plt.yticks()[0][0:-1])
-    
+
     if np.amax(np.amax(g.spec, axis=0)) > 0 and log:
         ax_spectrum.set_yscale('log')
     ax_spectrum.grid(True)
-    
+
     spectrum_lamdwidth_fwhm = np.zeros_like(g.z)
     spectrum_lamdwidth_std = np.zeros_like(g.z)
-    
+
     for zz in range(g.nZ):
         spectrum_lamdwidth_fwhm[zz] = None
         spectrum_lamdwidth_std[zz] = None
@@ -709,9 +709,9 @@ def subfig_rad_spec(ax_spectrum, g, legend,colour='red', log=1):#HMCC
                     dlambda = abs(g.freq_lamd[pos] - g.freq_lamd[pos-1])
                 else:
                     dlambda = abs( (g.freq_lamd[arr[0]] - g.freq_lamd[arr[-1]]) / (arr[0] - arr[-1]) )
-                spectrum_lamdwidth_fwhm[zz] = dlambda * width / g.freq_lamd[pos]  
+                spectrum_lamdwidth_fwhm[zz] = dlambda * width / g.freq_lamd[pos]
                 # spectrum_lamdwidth_fwhm[zz] = abs(g.freq_lamd[arr[0]] - g.freq_lamd[arr[-1]]) / g.freq_lamd[pos]  # the FWHM of spectral line (error when peakpos is at the edge of lamdscale)
-            
+
             spectrum_lamdwidth_std[zz] = std_moment(g.freq_lamd, g.spec[:, zz]) / n_moment(g.freq_lamd, g.spec[:, zz], 0, 1)
 
         # try:
@@ -731,7 +731,7 @@ def subfig_rad_spec(ax_spectrum, g, legend,colour='red', log=1):#HMCC
     ax_spec_bandw.grid(False)
     plt.yticks(plt.yticks()[0][0:-1])
     ax_spec_bandw.set_ylim(ymin=0)
-    
+
     if legend:
         ax_spec_bandw.legend()
     ax_spec_bandw.set_ylabel(r'$\Delta\lambda/\lambda, \%$'+'\n'+r'(-- fwhm, $\cdots2\sigma$)')
@@ -741,7 +741,7 @@ def subfig_rad_spec(ax_spectrum, g, legend,colour='red', log=1):#HMCC
     ax_spectrum.yaxis.label.set_color('r')
     ax_spectrum.tick_params(axis='y', which='both', colors=ax_spectrum.yaxis.label.get_color())
     ax_spectrum.yaxis.get_offset_text().set_color(ax_spectrum.yaxis.label.get_color())
-    
+
     ax_spec_bandw.yaxis.label.set_color('m')
     ax_spec_bandw.tick_params(axis='y', which='both', colors=ax_spec_bandw.yaxis.label.get_color())
     ax_spec_bandw.yaxis.get_offset_text().set_color(ax_spec_bandw.yaxis.label.get_color())
@@ -751,13 +751,13 @@ def subfig_rad_spec(ax_spectrum, g, legend,colour='red', log=1):#HMCC
     # print (yticks[1].label.get_text())
     # yticks[1].label.set_text('')
     # print (yticks[1].label.get_text())
-    
+
 
 
 def subfig_rad_size(ax_size_t, g,legend):
     if g.nSlices == 1:
-        ax_size_t.plot(g.z, g.r_size.T * 2 * 1e6, 'b-', linewidth=1.5) 
-        ax_size_t.plot([np.amin(g.z), np.amax(g.z)], [g.leng * 1e6, g.leng * 1e6], 'b-', linewidth=1.0) 
+        ax_size_t.plot(g.z, g.r_size.T * 2 * 1e6, 'b-', linewidth=1.5)
+        ax_size_t.plot([np.amin(g.z), np.amax(g.z)], [g.leng * 1e6, g.leng * 1e6], 'b-', linewidth=1.0)
         #ax_size_t.plot(g.z, g.r_size.T * 2 * 1e6, color = colour, linewidth=1.5) #HMCC
         #ax_size_t.plot([np.amin(g.z), np.amax(g.z)], [g.leng * 1e6, g.leng * 1e6], color = colour, linewidth=1.0) #HMCC
         ax_size_t.set_ylabel('transverse $[\mu m]$')
@@ -770,7 +770,7 @@ def subfig_rad_size(ax_size_t, g,legend):
                 weight = g.p_int + np.amin(g.p_int[g.p_int != 0]) / 1e6
             else:
                 weight = np.ones_like(g.p_int)
-            ax_size_t.plot(g.z, np.average(g.r_size * 2 * 1e6, weights=weight, axis=0), 'b-', linewidth=1.5) 
+            ax_size_t.plot(g.z, np.average(g.r_size * 2 * 1e6, weights=weight, axis=0), 'b-', linewidth=1.5)
             #ax_size_t.plot(g.z, np.average(g.r_size * 2 * 1e6, weights=weight, axis=0), color = colour, linewidth=1.5)#HMCC
 
     ax_size_t.set_ylim(ymin=0)
@@ -778,7 +778,7 @@ def subfig_rad_size(ax_size_t, g,legend):
     ax_size_t.set_ylabel(r'$\sim$size$_{transv}$ [$\mu$m]'+'\n'+u'(\u2014 $2\sigma$)')
     ax_size_t.grid(True)
     plt.yticks(plt.yticks()[0][0:-1])
-    
+
     if g.nSlices > 1:
         ax_size_s = ax_size_t.twinx()
         size_long_fwhm = np.zeros_like(g.z)
@@ -796,7 +796,7 @@ def subfig_rad_size(ax_size_t, g,legend):
                     size_long_fwhm[zz] = None
                 # except:
                     # size_long_fwhm[zz] = 0
-                
+
                 # try:
                 size_long_std[zz] = std_moment(s, g.p_int[:, zz])
                 # except:
@@ -804,20 +804,20 @@ def subfig_rad_size(ax_size_t, g,legend):
             else:
                 size_long_fwhm[zz] = None
                 size_long_std[zz] = None
-            
-        ax_size_s.plot(g.z, size_long_fwhm, color='navy', linestyle='--', linewidth=1.0, label="fwhm") 
-        ax_size_s.plot(g.z, 2*size_long_std, color='navy', linestyle=':', linewidth=1.0, label="std") 
+
+        ax_size_s.plot(g.z, size_long_fwhm, color='navy', linestyle='--', linewidth=1.0, label="fwhm")
+        ax_size_s.plot(g.z, 2*size_long_std, color='navy', linestyle=':', linewidth=1.0, label="std")
         #ax_size_s.plot(g.z, size_long_fwhm, color=colour, linestyle='--', linewidth=1.0, label=legend + "fwhm")
         #ax_size_s.plot(g.z, 2*size_long_std, color=colour, linestyle=':', linewidth=1.0, label=legend + "std")
         ax_size_s.set_ylim(ymin=0)
         ax_size_s.set_ylabel(r'size$_{long}$ [$\mu$m]'+'\n'+r'(-- fwhm, $\cdots2\sigma$)')
         ax_size_s.grid(False)
         plt.yticks(plt.yticks()[0][0:-1])
-        
+
         ax_size_t.yaxis.label.set_color('b')
         ax_size_t.tick_params(axis='y', which='both', colors=ax_size_t.yaxis.label.get_color())
         ax_size_t.yaxis.get_offset_text().set_color(ax_size_t.yaxis.label.get_color())
-        
+
         ax_size_s.yaxis.label.set_color('navy')
         ax_size_s.tick_params(axis='y', which='both', colors=ax_size_s.yaxis.label.get_color())
         ax_size_s.yaxis.get_offset_text().set_color(ax_size_s.yaxis.label.get_color())
@@ -1003,7 +1003,7 @@ def plot_dfl(F, z_lim=[], xy_lim=[], figsize=25, cmap=def_cmap, legend=True, pha
     '''
     import matplotlib.colors as colors
     import matplotlib as mpl #HMCC
-     
+
     if showfig == False and savefig == False:
         return
     from ocelot.utils.xfel_utils import dfl_fft_xy, dfl_fft_z
@@ -1013,7 +1013,7 @@ def plot_dfl(F, z_lim=[], xy_lim=[], figsize=25, cmap=def_cmap, legend=True, pha
     if debug > 0:
         print('    plotting radiation field')
     start_time = time.time()
-    
+
     if F.__class__ != RadiationField:
         raise ValueError('wrong radiation object: should be RadiationField')
 
@@ -1111,7 +1111,7 @@ def plot_dfl(F, z_lim=[], xy_lim=[], figsize=25, cmap=def_cmap, legend=True, pha
             F = dfl_fft_xy(F, debug=debug)
         x = F.scale_x() * 1e6
         y = F.scale_y() * 1e6
-        
+
         unit_xy = r'$\mu$m'
         x_label = 'x [' + unit_xy + ']'
         y_label = 'y [' + unit_xy + ']'
@@ -1119,17 +1119,17 @@ def plot_dfl(F, z_lim=[], xy_lim=[], figsize=25, cmap=def_cmap, legend=True, pha
         y_title = 'Y projection'
         xy_title = 'Intensity'
         x_y_color = 'blue'
-    
+
     if log_scale:
         suffix += '_log'
-    
+
     F.fld = F.fld.astype(np.complex64)
     xy_proj = F.int_xy()
     xy_proj_ph = np.angle(np.sum(F.fld,axis=0))  # tmp  # tmp
     yz_proj = F.int_zy()
     xz_proj = F.int_zx()
     z_proj = F.int_z()
-    
+
     dx = abs(x[1] - x[0])
     dy = abs(y[1] - y[0])
 
@@ -1155,15 +1155,15 @@ def plot_dfl(F, z_lim=[], xy_lim=[], figsize=25, cmap=def_cmap, legend=True, pha
         x_line, y_line = x_line / max(x_line), y_line / max(y_line)
 
     ax_int = fig.add_subplot(2, 2 + column_3d, 1)
-   
+
     if log_scale:
         intplt = ax_int.pcolormesh(x, y, swapaxes(xy_proj, 1, 0), norm=colors.LogNorm(vmin=xy_proj.min(), vmax=xy_proj.max()), cmap=cmap)
     else:
         intplt = ax_int.pcolormesh(x, y, swapaxes(xy_proj, 1, 0), cmap=cmap)
     ax_int.set_title(xy_title)
-    ax_int.set_xlabel(r'' + x_label,fontsize='xx-large')#HMCC
-    ax_int.set_ylabel(y_label,fontsize='xx-large')#HMCC  
-    ax_int.tick_params(axis='both', which='both',labelsize='xx-large' )#HMCC
+    ax_int.set_xlabel(r'' + x_label,fontsize=13)#HMCC
+    ax_int.set_ylabel(y_label,fontsize=13)#HMCC
+    ax_int.tick_params(axis='both', which='both',labelsize=13 )#HMCC
     if size(z) > 1 and text_present:
         ax_int.text(0.01, 0.01, r'$E_{p}$=%.2e J' % (E_pulse), horizontalalignment='left', verticalalignment='bottom', fontsize=12, color='white', transform=ax_int.transAxes)
 
@@ -1171,8 +1171,8 @@ def plot_dfl(F, z_lim=[], xy_lim=[], figsize=25, cmap=def_cmap, legend=True, pha
         ax_ph = fig.add_subplot(2, 2 + column_3d, 4 + column_3d, sharex=ax_int, sharey=ax_int)
         ax_ph.pcolormesh(x, y, swapaxes(xy_proj_ph, 1, 0), cmap=cmap_ph)
         ax_ph.axis([min(x), max(x), min(y), max(y)])
-        ax_ph.set_title('Phase',fontsize='xx-large')
-        ax_ph.tick_params(axis='both', which='both',labelsize='xx-large' )#HMCC 
+        ax_ph.set_title('Phase',fontsize=13)
+        ax_ph.tick_params(axis='both', which='both',labelsize=13 )#HMCC
 
     else:
         ax_z = fig.add_subplot(2, 2 + column_3d, 4 + column_3d)
@@ -1180,13 +1180,13 @@ def plot_dfl(F, z_lim=[], xy_lim=[], figsize=25, cmap=def_cmap, legend=True, pha
             ax_z.semilogy(z, z_proj, linewidth=1.5, color=z_color)
         else:
             ax_z.plot(z, z_proj, linewidth=1.5, color=z_color)
-        ax_z.set_title(z_title,fontsize='xx-large')#HMCC
-        ax_z.set_ylim(ymin=0)  
-        ax_z.tick_params(axis='both', which='both',labelsize='xx-large' )#HMCC
-        
+        ax_z.set_title(z_title,fontsize=13)#HMCC
+        ax_z.set_ylim(ymin=0)
+        ax_z.tick_params(axis='both', which='both',labelsize=13 )#HMCC
+
 
     ax_proj_x = fig.add_subplot(2, 2 + column_3d, 3 + column_3d, sharex=ax_int)
-    ax_proj_x.set_title(x_title) 
+    ax_proj_x.set_title(x_title)
 
     if sum(x_line) != 0:
         x_line_f, rms_x = gauss_fit(x, x_line)  # fit with Gaussian, and return fitted function and rms
@@ -1198,24 +1198,24 @@ def plot_dfl(F, z_lim=[], xy_lim=[], figsize=25, cmap=def_cmap, legend=True, pha
         x_line_f = np.zeros_like(x_line)
         rms_x = 0
         fwhm_x = 0
-    
+
     if log_scale:
         ax_proj_x.semilogy(x, x_line, linewidth=2, color=x_y_color)
         ax_proj_x.semilogy(x, x_line_f, color='grey')
     else:
         ax_proj_x.plot(x, x_line, linewidth=2, color=x_y_color)
         ax_proj_x.plot(x, x_line_f, color='grey')
-        ax_proj_x.tick_params(axis='both', which='both',labelsize='xx-large' )#HMCC
+        ax_proj_x.tick_params(axis='both', which='both',labelsize=13 )#HMCC
     if text_present:
         try:
-            ax_proj_x.text(0.95, 0.95, 'fwhm= \n' + str(round_sig(fwhm_x, 3)) + r' [' + unit_xy + ']\nrms= \n' + str(round_sig(rms_x, 3)) + r' [' + unit_xy + ']', horizontalalignment='right', verticalalignment='top', transform=ax_proj_x.transAxes,fontsize='x-large')#HMCC
+            ax_proj_x.text(0.95, 0.95, 'fwhm= \n' + str(round_sig(fwhm_x, 3)) + r' [' + unit_xy + ']\nrms= \n' + str(round_sig(rms_x, 3)) + r' [' + unit_xy + ']', horizontalalignment='right', verticalalignment='top', transform=ax_proj_x.transAxes,fontsize=13)#HMCC
         except:
             pass
     ax_proj_x.set_ylim(ymin=0, ymax=1)
-    ax_proj_x.set_xlabel(x_label,fontsize='xx-large')#HMCC
+    ax_proj_x.set_xlabel(x_label,fontsize=13)#HMCC
 
     ax_proj_y = fig.add_subplot(2, 2 + column_3d, 2, sharey=ax_int)
-    ax_proj_y.set_title(y_title,fontsize='xx-large') #HMCC
+    ax_proj_y.set_title(y_title,fontsize=13) #HMCC
 
     if sum(y_line) != 0:
         y_line_f, rms_y = gauss_fit(y, y_line)  # fit with Gaussian, and return fitted function and rms
@@ -1227,23 +1227,23 @@ def plot_dfl(F, z_lim=[], xy_lim=[], figsize=25, cmap=def_cmap, legend=True, pha
         y_line_f = np.zeros_like(y_line)
         rms_y = 0
         fwhm_y = 0
-    
+
     if log_scale:
         ax_proj_y.semilogx(y_line, y, linewidth=2, color=x_y_color)
         ax_proj_y.semilogx(y_line_f, y, color='grey')
     else:
         ax_proj_y.plot(y_line, y, linewidth=2, color=x_y_color)
         ax_proj_y.plot(y_line_f, y, color='grey')
-    
+
     if text_present:
         try:
-            ax_proj_y.text(0.95, 0.95, 'fwhm= ' + str(round_sig(fwhm_y, 3)) + r' [' + unit_xy + ']\nrms= ' + str(round_sig(rms_y, 3)) + r' [' + unit_xy + ']', horizontalalignment='right', verticalalignment='top', transform=ax_proj_y.transAxes, fontsize='x-large')#HMCC
+            ax_proj_y.text(0.95, 0.95, 'fwhm= ' + str(round_sig(fwhm_y, 3)) + r' [' + unit_xy + ']\nrms= ' + str(round_sig(rms_y, 3)) + r' [' + unit_xy + ']', horizontalalignment='right', verticalalignment='top', transform=ax_proj_y.transAxes, fontsize=13)#HMCC
         except:
             pass
     ax_proj_y.set_xlim(xmin=0, xmax=1)
-    ax_proj_y.set_ylabel(y_label,fontsize='xx-large')#HMCC 
-    ax_proj_y.tick_params(axis='both', which='both',labelsize='xx-large' )#HMCC
-    
+    ax_proj_y.set_ylabel(y_label,fontsize=13)#HMCC
+    ax_proj_y.tick_params(axis='both', which='both',labelsize=13 )#HMCC
+
     # if log_scale:
         # ax_proj_x.set_yscale('log')
         # ax_proj_y.set_xscale('log')
@@ -1251,7 +1251,7 @@ def plot_dfl(F, z_lim=[], xy_lim=[], figsize=25, cmap=def_cmap, legend=True, pha
             # ax_z.set_yscale('log')
 
     if column_3d:
-        
+
         if np.amin(xz_proj) == 0:
             min_xz_proj = 0
         else:
@@ -1260,7 +1260,7 @@ def plot_dfl(F, z_lim=[], xy_lim=[], figsize=25, cmap=def_cmap, legend=True, pha
             min_yz_proj = 0
         else:
             min_yz_proj=yz_proj[yz_proj!=0].min()
-        
+
         if phase == True:
             ax_proj_xz = fig.add_subplot(2, 2 + column_3d, 6)
         else:
@@ -1269,21 +1269,21 @@ def plot_dfl(F, z_lim=[], xy_lim=[], figsize=25, cmap=def_cmap, legend=True, pha
             ax_proj_xz.pcolormesh(z, x, swapaxes(xz_proj, 1, 0), norm=colors.LogNorm(vmin=min_xz_proj, vmax=xz_proj.max()), cmap=cmap)
         else:
             ax_proj_xz.pcolormesh(z, x, swapaxes(xz_proj, 1, 0), cmap=cmap)
-        ax_proj_xz.set_title('Top view',fontsize='xx-large')#HMCC
-        ax_proj_xz.set_xlabel(z_label,fontsize='xx-large')#HMCC
-        ax_proj_xz.set_ylabel(x_label,fontsize='xx-large') #HMCC 
-        ax_proj_xz.tick_params(axis='both', which='both',labelsize='xx-large' )#HMCC
-        
+        ax_proj_xz.set_title('Top view',fontsize=13)#HMCC
+        ax_proj_xz.set_xlabel(z_label,fontsize=13)#HMCC
+        ax_proj_xz.set_ylabel(x_label,fontsize=13) #HMCC
+        ax_proj_xz.tick_params(axis='both', which='both',labelsize=13 )#HMCC
+
 
         ax_proj_yz = fig.add_subplot(2, 2 + column_3d, 3, sharey=ax_int, sharex=ax_proj_xz)
         if log_scale:
             ax_proj_yz.pcolormesh(z, y, swapaxes(yz_proj, 1, 0), norm=colors.LogNorm(vmin=min_yz_proj, vmax=yz_proj.max()), cmap=cmap)
         else:
             ax_proj_yz.pcolormesh(z, y, swapaxes(yz_proj, 1, 0), cmap=cmap)
-        ax_proj_yz.set_title('Side view',fontsize='xx-large')#HMCC
-        ax_proj_yz.set_xlabel(z_label,fontsize='xx-large')#HMCC
-        ax_proj_yz.set_ylabel(y_label,fontsize='xx-large')#HMCC  
-        ax_proj_yz.tick_params(axis='both', which='both',labelsize='xx-large' )#HMCC
+        ax_proj_yz.set_title('Side view',fontsize=13)#HMCC
+        ax_proj_yz.set_xlabel(z_label,fontsize=13)#HMCC
+        ax_proj_yz.set_ylabel(y_label,fontsize=13)#HMCC
+        ax_proj_yz.tick_params(axis='both', which='both',labelsize=13 )#HMCC
 
     cbar = 0
     if cbar:
@@ -1291,7 +1291,7 @@ def plot_dfl(F, z_lim=[], xy_lim=[], figsize=25, cmap=def_cmap, legend=True, pha
         cbar_int = fig.add_axes([0.89, 0.15, 0.015, 0.7])
         cbar = plt.colorbar(intplt, cax=cbar_int)  # pad = -0.05 ,fraction=0.01)
         # cbar.set_label(r'[$ph/cm^2$]',size=10)
-        cbar.set_label(r'a.u.', size='x-large')#HMCC
+        cbar.set_label(r'a.u.', size=13)#HMCC
 
     if auto_zoom != False:
         size_x = max(abs(x[nonzero(x_line > 0.005)][[0, -1]]))
@@ -1307,7 +1307,7 @@ def plot_dfl(F, z_lim=[], xy_lim=[], figsize=25, cmap=def_cmap, legend=True, pha
             ax_proj_xz.set_ylim([-size_xy, size_xy])
         ax_int.axis('equal')
         ax_int.axis([-size_xy, size_xy, -size_xy, size_xy] )
-        ax_int.tick_params(axis='both', which='both',labelsize='xx-large' )#HMCC)
+        ax_int.tick_params(axis='both', which='both',labelsize=13 )#HMCC)
         suffix += '_zmd'
     else:
         if column_3d == True:
@@ -1356,7 +1356,7 @@ def plot_dfl(F, z_lim=[], xy_lim=[], figsize=25, cmap=def_cmap, legend=True, pha
 def plot_gen_stat(proj_dir, run_inp=[], stage_inp=[], param_inp=[], s_param_inp=['p_int', 'energy', 'r_size_weighted', 'spec', 'error'], z_param_inp=['p_int', 'phi_mid_disp', 'spec', 'bunching', 'wigner'], dfl_param_inp=['dfl_spec'], run_param_inp=['p_int', 'spec', 'energy'], s_inp=['max'], z_inp=[0,'end'], run_s_inp=['max'], run_z_inp=['end'], spec_pad=1, savefig=1, saveval=1, showfig=0, debug=1):
     '''
     The routine for plotting the statistical info of many GENESIS runs
-    
+
     proj_dir is the directory path in which \run_xxx folders are located.
     run_inp=[1,2,3] number of runs to be processed, default - all possible up to run 1000
     stage_inp=[1,2,3] stages to be processed, default - all possible up to stage 15
@@ -1426,7 +1426,7 @@ def plot_gen_stat(proj_dir, run_inp=[], stage_inp=[], param_inp=[], s_param_inp=
           #      except:
           #          print('     could not read '+out_file)
         run_range = run_range_good
-        
+
         # if len(run_range)!=0 and debug>0:
             # print('stage = ', stage)
 
@@ -1465,9 +1465,9 @@ def plot_gen_stat(proj_dir, run_inp=[], stage_inp=[], param_inp=[], s_param_inp=
         # if s_param_inp==[]:
             # s_param_range=param_range
         # else:
-        
 
-        
+
+
         s_param_range = s_param_inp
         if debug > 0:
             print('    processing S parameters ' + str(s_param_range))
@@ -1540,7 +1540,7 @@ def plot_gen_stat(proj_dir, run_inp=[], stage_inp=[], param_inp=[], s_param_inp=
             print('    processing Z parameters ' + str(z_param_range))
         if debug > 1:
             print('      z_inp ' + str(z_inp))
-            
+
         if 'wigner' in z_param_range:
             if debug > 0:
                 print('    processing Wigner')
@@ -1562,7 +1562,7 @@ def plot_gen_stat(proj_dir, run_inp=[], stage_inp=[], param_inp=[], s_param_inp=
                             print('      saving ' + wig_fig_name + '.txt')
                         np.savetxt(saving_path + wig_fig_name + '.txt', W.wig, fmt="%E", newline='\n', comments='')
                         np.savetxt(saving_path + wig_fig_name + '_sc.txt', vstack([W.freq_lamd, W.s]).T, fmt="%E", newline='\n', comments='')
-     
+
 
         for param in z_param_range:
             for z_ind in z_inp:
@@ -1897,11 +1897,11 @@ def plot_gen_corr(proj_dir, run_inp=[], p1=(), p2=(), savefig=False, showfig=Tru
 
 
 def plot_dpa_bucket_out(out, dpa=None, slice_pos=None, repeat=1, GeV=1, figsize=4, cmap=def_cmap, scatter=True, energy_mean=None, legend=True, fig_name=None, savefig=False, showfig=True, bins=[50,50], debug=1):
-    
+
     if dpa == None:
         dpa=read_dpa_file_out(out)
-        
-    
+
+
     if out.nSlices > 1:
         if type(slice_pos) == str:
             if slice_pos == 'max_I':
@@ -1928,18 +1928,18 @@ def plot_dpa_bucket_out(out, dpa=None, slice_pos=None, repeat=1, GeV=1, figsize=
 
 def plot_dpa_bucket(dpa, slice_num=None, repeat=1, GeV=1, figsize=4, cmap=def_cmap, scatter=False, energy_mean=None, legend=True, fig_name=None, savefig=False, showfig=True, suffix='', bins=(50,50), debug=1, return_mode_gamma=0,i_mov=0):
     #part_colors = ['darkred', 'orange', 'g', 'b', 'm','c','y'] HMCC comment
-    
+
     # cmap='BuPu'
     y_bins = bins[0]
     z_bins = bins[1]
-    
+
     if showfig == False and savefig == False:
         return
 
     if debug > 0:
         print('    plotting bucket')
     start_time = time.time()
-    
+
     if dpa.__class__ != GenesisParticlesDump:
         raise ValueError('wrong particle object: should be GenesisParticlesDump')
 
@@ -1957,24 +1957,24 @@ def plot_dpa_bucket(dpa, slice_num=None, repeat=1, GeV=1, figsize=4, cmap=def_cm
     fig.clf()
     fig.set_size_inches((5 * figsize, 3 * figsize), forward=True)
 
-    
+
     left, width = 0.18, 0.57
     bottom, height = 0.14, 0.55
     left_h = left + width + 0.02 - 0.02
     bottom_h = bottom + height + 0.02 - 0.02
-    
+
 
     rect_scatter = [left, bottom, width, height]
     rect_histx = [left, bottom_h, width, 0.2]
     rect_histy = [left_h, bottom, 0.15, height]
-    
+
     ax_main = plt.axes(rect_scatter)
     ax_z_hist = plt.axes(rect_histx, sharex=ax_main)
     ax_y_hist = plt.axes(rect_histy, sharey=ax_main)
-    
+
     # ax_z_hist = plt.subplot2grid((4, 1), (0, 0), rowspan=1)
     # ax_y_hist = plt.subplot2grid((4, 1), (0, 0), rowspan=1)
-    
+
     # ax_main = plt.subplot2grid((4, 1), (1, 0), rowspan=3, sharex=ax_z_hist)
 
     nbins = shape(dpa.ph)[1]
@@ -1985,10 +1985,10 @@ def plot_dpa_bucket(dpa, slice_num=None, repeat=1, GeV=1, figsize=4, cmap=def_cm
 
     if GeV:
         energy *= m_e_MeV
-        if energy_mean == None: 
+        if energy_mean == None:
             energy_mean = round(np.mean(energy), 0)
     else:
-        if energy_mean == None: 
+        if energy_mean == None:
             energy_mean = round(np.mean(energy), 1)
     energy -= energy_mean
 
@@ -1997,7 +1997,7 @@ def plot_dpa_bucket(dpa, slice_num=None, repeat=1, GeV=1, figsize=4, cmap=def_cm
     for irep in range(repeat-1):
         phase_flat=np.append(phase_flat,phase.flatten() + 2 * np.pi * (irep+1))
         energy_flat=np.append(energy_flat,energy.flatten())
-    
+
     # phase_hist = np.ravel(phase)
     # for irep in range(repeat-1):
         # phase_hist = np.concatenate((phase_hist, np.ravel(phase) + 2 * np.pi * (irep+1)))
@@ -2012,13 +2012,13 @@ def plot_dpa_bucket(dpa, slice_num=None, repeat=1, GeV=1, figsize=4, cmap=def_cm
     edges_y = edges_y[0:-1]  # remove the last bin edge to save equal number of points
     ax_y_hist.barh(edges_y, hist_y, height=edges_y[1] - edges_y[0], color='silver')
     ax_y_hist.set_xlabel('counts')
-    
+
     for label in ax_z_hist.get_xticklabels():
         label.set_visible(False)
-        
+
     for label in ax_y_hist.get_yticklabels():
         label.set_visible(False)
-        
+
 
     if scatter == True:
         part_colors=[cmap(i) for i in np.linspace(0,0.999,nbins)] #HMCC
@@ -2030,9 +2030,9 @@ def plot_dpa_bucket(dpa, slice_num=None, repeat=1, GeV=1, figsize=4, cmap=def_cm
 
     elif scatter == False:
         ax_main.hist2d(phase_flat, energy_flat, bins=[z_bins * repeat, y_bins], cmin=0, cmap=cmap)
-        
-    
-                
+
+
+
     ax_main.set_xlabel('$\phi$ [rad]')
     if GeV:
         ax_main.set_ylabel('E [MeV] + ' + str(energy_mean / 1000) + ' [GeV]')
@@ -2055,13 +2055,13 @@ def plot_dpa_bucket(dpa, slice_num=None, repeat=1, GeV=1, figsize=4, cmap=def_cm
         return ax_main
 
 
-def plot_edist(edist, figsize=45, fig_name=None, savefig=False, showfig=True, scatter=False, plot_x_y=True, plot_xy_s=False, bins=(50, 50, 50, 50), flip_t=True, s_units='um', e_units='ev', cmin=0, e_offset=None, cmap=def_cmap, debug=1):
+def plot_edist(edist, figsize=10, fig_name=None, savefig=False, showfig=True, scatter=False, plot_x_y=True, plot_xy_s=False, bins=(100, 100, 100, 100), flip_t=True, s_units='um', e_units='ev', cmin=0, e_offset=None, cmap=def_cmap, debug=1):
     import matplotlib as mpl #HMCC
-    
+
     font_s = 'medium'
-    font_t = 'xx-small'
-    font_t2 = 6.6
-    
+    font_t = 'medium'
+    font_t2 = 'medium'
+
     if plot_xy_s==True:
         plot_x_y =False
     else:
@@ -2084,7 +2084,7 @@ def plot_edist(edist, figsize=45, fig_name=None, savefig=False, showfig=True, sc
 
     fig = plt.figure(fig_name)
     fig.clf()
-    #mpl.rcParams.update({'font.size':'x-large'})#HMCC
+    #mpl.rcParams.update({'font.size':13})#HMCC
     #fig.set_size_inches(((3 + plot_x_y + plot_xy_s) * figsize, 3 * figsize), forward=True) HMCC
     #fig.set_size_inches(((3+plot_x_y + plot_xy_s) * figsize, 3 * figsize), forward=True)
 
@@ -2099,7 +2099,7 @@ def plot_edist(edist, figsize=45, fig_name=None, savefig=False, showfig=True, sc
         # s = -edist.t * speed_of_light * 1e6
     # else:
         # s = edist.t * speed_of_light * 1e6
-    if plot_xy_s: 
+    if plot_xy_s:
         #fig.set_size_inches(((3+plot_xy_s) * figsize, 3 * figsize), forward=True)
         hist, edges = np.histogram(s, bins=bins[2])  # calculate current histogram
         edges = edges[0:-1]  # remove the last bin edge to save equal number of points
@@ -2118,7 +2118,7 @@ def plot_edist(edist, figsize=45, fig_name=None, savefig=False, showfig=True, sc
             energy = edist.g * m_e_MeV
         else:  # elif beam_E_plot=='gamma':
             energy = edist.g
-        
+
         if e_offset == None:
             e_offset = int(mean(energy))
         if scatter:
@@ -2132,6 +2132,7 @@ def plot_edist(edist, figsize=45, fig_name=None, savefig=False, showfig=True, sc
         else:  # elif beam_E_plot=='gamma':
             ax_se.set_ylabel('$\gamma$ + ' + str(e_offset),fontsize=font_s)#HMCC
         ax_se.tick_params(axis='both', which='both',labelsize=font_t2 )#HMCC
+        #ax_se.set_ylim([0.1*np.amin(energy - e_offset),1.01*np.amax(energy - e_offset)])
 
         ax_xs = fig.add_subplot(3, 1+plot_xy_s, 3, sharex=ax_curr)
         if scatter:
@@ -2141,24 +2142,28 @@ def plot_edist(edist, figsize=45, fig_name=None, savefig=False, showfig=True, sc
         ax_xs.set_xlabel(s_label,fontsize=font_s)#HMCC
         ax_xs.set_ylabel('x [$\mu$m]',fontsize=font_s)#HMCC
         ax_xs.tick_params(axis='both', which='both',labelsize=font_t2)#HMCC
+        #ax_xs.set_ylim([0.8*np.amin(1e6 * edist.x),1.01*np.amax(1e6 * edist.x)])
 
         ax_ys = fig.add_subplot(3, 1+plot_xy_s, 4, sharex=ax_curr)
         if scatter:
             ax_ys.scatter(s, 1e6 * edist.y, marker='.')
         else:
-            ax_ys.hist2d(s, 1e6 * edist.y, [bins[2], bins[1]], cmin=cmin, cmap=cmap) 
- 
+            ax_ys.hist2d(s, 1e6 * edist.y, [bins[2], bins[1]], cmin=cmin, cmap=cmap)
+
         ax_ys.set_xlabel(s_label,fontsize=font_s)#HMCC
         ax_ys.set_ylabel('y [$\mu$m]',fontsize=font_s)#HMCC
-        ax_ys.tick_params(axis='both', which='both',labelsize=font_t2 )#HMCC# 
+        ax_ys.tick_params(axis='both', which='both',labelsize=font_t2 )#HMCC#
+        #ax_ys.set_ylim([0.8*np.amin(1e6 * edist.y),1.01*np.amax(1e6 * edist.y)])
+
         ax_xps = fig.add_subplot(3, 1+plot_xy_s,5)
         if scatter:
             ax_xps.scatter(s, 1e6 * edist.xp, marker='.')
         else:
             ax_xps.hist2d(s, 1e6 * edist.xp, [bins[2], bins[1]], cmin=cmin, cmap=cmap)
             ax_xps.set_xlabel(s_label,fontsize=font_s)#HMCC
-            ax_xps.set_ylabel('px [$\mu$rad]',fontsize=font_s)#HMCC 
+            ax_xps.set_ylabel('px [$\mu$rad]',fontsize=font_s)#HMCC
             ax_xps.tick_params(axis='both', which='both',labelsize=font_t2 )#HMCC
+        #ax_xps.set_ylim(0.8*np.amin(1e6 * edist.xp),1.01*np.amax(1e6 * edist.xp))
         ax_yps = fig.add_subplot(3, 1+plot_xy_s, 6)
         if scatter:
             ax_yps.scatter(s, 1e6 * edist.yp, marker='.')
@@ -2167,11 +2172,13 @@ def plot_edist(edist, figsize=45, fig_name=None, savefig=False, showfig=True, sc
         ax_yps.set_xlabel(s_label,fontsize=font_s)#HMCC
         ax_yps.set_ylabel('py [$\mu$rad]',fontsize=font_s)#HMCC
         ax_yps.tick_params(axis='both', which='both',labelsize=font_t2 )#HMCC
+        #ax_yps.set_ylim(0.8*np.amin(1e6 * edist.yp),1.1*np.amax(1e6 * edist.yp))
+
         if scatter:
             if flip_t:
                 ax_curr.set_xlim([np.amax(s), np.amin(s)])
             else:
-                ax_curr.set_xlim([np.amin(s), np.amax(s)])       
+                ax_curr.set_xlim([np.amin(s), np.amax(s)])
         ax_curr.set_ylim(ymin=0)
         fig.subplots_adjust(wspace=0.5, hspace=0.3) #HMCC
     else:
@@ -2183,6 +2190,8 @@ def plot_edist(edist, figsize=45, fig_name=None, savefig=False, showfig=True, sc
         ax_xy.set_xlabel('x [$\mu$m]',fontsize=font_s)#HMCC
         ax_xy.set_ylabel('y [$\mu$m]',fontsize=font_s)#HMCC
         ax_xy.tick_params(axis='both', which='both',labelsize=font_t )#HMCC
+        #ax_xy.set_ylim(0.8*np.amin(1e6 * edist.y),1.01*np.amax(1e6 * edist.y))
+        #ax_xy.set_xlim(0.8*np.amin(1e6 * edist.x),1.01*np.amax(1e6 * edist.x))
         ax_pxpy = fig.add_subplot(2, 1+plot_x_y, 2)
         if scatter:
             ax_pxpy.scatter(edist.xp * 1e6, edist.yp * 1e6, marker='.')
@@ -2191,6 +2200,8 @@ def plot_edist(edist, figsize=45, fig_name=None, savefig=False, showfig=True, sc
         ax_pxpy.set_xlabel('px [$\mu$rad]',fontsize=font_s)#HMCC
         ax_pxpy.set_ylabel('py [$\mu$rad]',fontsize=font_s)#HMCC
         ax_pxpy.tick_params(axis='both', which='both',labelsize=font_t )#HMCC
+        #ax_pxpy.set_ylim(0.8*np.amin(1e6 * edist.yp),1.01*np.amax(1e6 * edist.yp))
+        #ax_pxpy.set_xlim(0.8*np.amin(1e6 * edist.xp),1.01*np.amax(1e6 * edist.xp))
         ax_xpx = fig.add_subplot(2,1+plot_x_y, 3)
         if scatter:
             ax_xpx.scatter(edist.x * 1e6, edist.xp * 1e6, marker='.')
@@ -2198,9 +2209,9 @@ def plot_edist(edist, figsize=45, fig_name=None, savefig=False, showfig=True, sc
             ax_xpx.hist2d(edist.x * 1e6, edist.xp * 1e6, [bins[0], bins[1]], cmin=cmin, cmap=cmap)
         ax_xpx.set_xlabel('x [$\mu$m]',fontsize=font_s)#HMCC
         ax_xpx.set_ylabel('px [$\mu$rad]',fontsize=font_s)#HMCC
-        ax_xpx.set_xlim([0.9*1e6*np.amax(edist.x), 1.1*1e6*np.amin(edist.x)])
-        ax_xpx.set_ylim([0.9*1e6*np.amax(edist.xp), 1.1*1e6*np.amin(edist.xp)]) 
         ax_xpx.tick_params(axis='both', which='both',labelsize=font_t )#HMCC
+        #ax_xpx.set_ylim(0.8*np.amin(1e6 * edist.xp),1.01*np.amax(1e6 * edist.xp))
+        #ax_xpx.set_xlim(0.8*np.amin(1e6 * edist.x),1.01*np.amax(1e6 * edist.x))
         ax_xpy = fig.add_subplot(2,1+plot_x_y, 4)
         if scatter:
             ax_xpy.scatter(edist.y * 1e6, edist.yp * 1e6, marker='.')
@@ -2208,14 +2219,14 @@ def plot_edist(edist, figsize=45, fig_name=None, savefig=False, showfig=True, sc
             ax_xpy.hist2d(edist.y * 1e6, edist.yp * 1e6, [bins[0], bins[1]], cmin=cmin, cmap=cmap)
         ax_xpy.set_xlabel('y [$\mu$m]',fontsize=font_s)#HMCC
         ax_xpy.set_ylabel('py [$\mu$m]',fontsize=font_s)#HMCC
-        ax_xpy.set_xlim([0.9*1e6*np.amax(edist.y), 1.1*1e6*np.amin(edist.y)])
-        ax_xpy.set_ylim([0.85*1e6*np.amax(edist.yp),1.1*1e6*np.amin(edist.yp)])
-        ax_xpy.tick_params(axis='both', which='both',labelsize=font_t )#HMCC 
+        #ax_xpy.set_xlim([0.9*1e6*np.amax(edist.y), 1.01*1e6*np.amin(edist.y)])
+        #ax_xpy.set_ylim([0.85*1e6*np.amax(edist.yp),1.01*1e6*np.amin(edist.yp)])
+        ax_xpy.tick_params(axis='both', which='both',labelsize=font_t )#HMCC
         fig.subplots_adjust(wspace=0.5, hspace=0.5) #HMCC
 
     #########
 
-   
+
 
     plt.draw()
     if savefig != False:
@@ -2242,10 +2253,10 @@ def plot_beam(beam, figsize=3, showfig=True, savefig=False, fig=None, plot_xy=No
 
     if showfig == False and savefig == False:
         return
-    
+
     if beam.__class__ != GenesisBeam:
         raise ValueError('wrong beam object: should be GenesisBeam')
-    
+
     fontsize = 15
 
     if plot_xy == None:
@@ -2257,7 +2268,7 @@ def plot_beam(beam, figsize=3, showfig=True, savefig=False, fig=None, plot_xy=No
     if fig == None:
         fig = plt.figure()
     fig.clf()
-    
+
     g0 = np.mean(beam.g0).astype(int) #mean
     g0_dev = beam.g0 - g0 #deviation from mean
 
@@ -2266,9 +2277,9 @@ def plot_beam(beam, figsize=3, showfig=True, savefig=False, fig=None, plot_xy=No
     plt.grid(True)
     ax.set_xlabel(r'$s [\mu m]$',fontsize=fontsize)
     p1, = plt.plot(1.e6 * np.array(beam.z), beam.I, 'r', lw=3)
-    
+
     ax.set_ylim(ymin=0)
-    
+
     if hasattr(beam,'eloss'):
         ax = ax.twinx()
         p2, = plt.plot(1.e6 * np.array(beam.z), 1.e-3 * np.array(beam.eloss), 'g', lw=3)
@@ -2363,19 +2374,19 @@ def plot_wigner(wig_or_out, z=np.inf, p_units='um', s_units='nm', x_lim=(None,No
     '''
     if showfig == False and savefig == False:
         return
-    
+
     if debug > 0:
         print('    plotting Wigner distribution')
-        
-        
+
+
     if isinstance(wig_or_out, GenesisOutput):
         W=wigner_out(wig_or_out,z)
     elif isinstance(wig_or_out, WignerDistribution):
         W=wig_or_out
     else:
         raise ValueError('Unknown object for Wigner plot')
-    
-    
+
+
     if fig_name is None:
         if W.fileName() is '':
             fig_text = 'Wigner distribution'
@@ -2385,48 +2396,48 @@ def plot_wigner(wig_or_out, z=np.inf, p_units='um', s_units='nm', x_lim=(None,No
         fig_text = fig_name
     if W.z!=None:
         fig_text += ' ' + str(W.z) + 'm'
-        
+
     if autoscale:
         fig_text += ' autsc'
-        
+
     fig = plt.figure(fig_text)
     plt.clf()
     fig.set_size_inches((18, 13), forward=True)
-        
+
     power=W.power()
     spec=W.spectrum()
     wigner=W.wig
     wigner_lim=np.amax(abs(W.wig))
-    
+
     if p_units=='fs':
         power_scale=W.s/speed_of_light*1e15
         p_label_txt='time [fs]'
     else:
         power_scale=W.s*1e6
         p_label_txt='s [$\mu$m]'
-    
+
     if s_units=='ev':
         spec_scale=speed_of_light*h_eV_s*1e9/W.freq_lamd
         f_label_txt='ph.energy [eV]'
     else:
         spec_scale=W.freq_lamd
         f_label_txt='wavelength [nm]'
-    
+
     # definitions for the axes
     left, width = 0.18, 0.57
     bottom, height = 0.14, 0.55
     left_h = left + width + 0.02 - 0.02
     bottom_h = bottom + height + 0.02 - 0.02
-    
+
 
     rect_scatter = [left, bottom, width, height]
     rect_histx = [left, bottom_h, width, 0.2]
     rect_histy = [left_h, bottom, 0.15, height]
-    
+
     axScatter = plt.axes(rect_scatter)
     axHistx = plt.axes(rect_histx, sharex=axScatter)
     axHisty = plt.axes(rect_histy, sharey=axScatter)
-    
+
     if abs_value:
         axScatter.pcolormesh(power_scale, spec_scale, abs(wigner)) #change
         axScatter.text(0.02, 0.98, r'$W_{max}$= %.2e' % (np.amax(wigner)), horizontalalignment='left', verticalalignment='top', transform=axScatter.transAxes, color='w')
@@ -2435,14 +2446,14 @@ def plot_wigner(wig_or_out, z=np.inf, p_units='um', s_units='nm', x_lim=(None,No
         # axScatter.imshow(wigner, cmap=cmap, vmax=wigner_lim, vmin=-wigner_lim)
         axScatter.pcolormesh(power_scale[::downsample], spec_scale[::downsample], wigner[::downsample,::downsample], cmap=cmap, vmax=wigner_lim, vmin=-wigner_lim)
         axScatter.text(0.02, 0.98, r'$W_{max}$= %.2e' % (np.amax(wigner)), horizontalalignment='left', verticalalignment='top', transform=axScatter.transAxes)#fontsize=12,
-            
+
     axHistx.plot(power_scale,power)
     axHistx.text(0.02, 0.95, r'E= %.2e J' % (W.energy()), horizontalalignment='left', verticalalignment='top', transform=axHistx.transAxes)#fontsize=12,
     axHistx.set_ylabel('power [W]')
 
     axHisty.plot(spec,spec_scale)
     axHisty.set_xlabel('spectrum [a.u.]')
-    
+
     axScatter.axis('tight')
     axScatter.set_xlabel(p_label_txt)
     axScatter.set_ylabel(f_label_txt)
@@ -2456,13 +2467,13 @@ def plot_wigner(wig_or_out, z=np.inf, p_units='um', s_units='nm', x_lim=(None,No
     for tl in axHisty.get_yticklabels():
         tl.set_visible(False)
 
-    
+
     axHistx.yaxis.major.locator.set_params(nbins=4)
     axHisty.xaxis.major.locator.set_params(nbins=2)
-    
+
     if autoscale == 1:
         autoscale = 1e-2
-    
+
     if autoscale != None:
         max_power = np.amax(power)
         max_spectrum = np.amax(spec)
@@ -2470,20 +2481,20 @@ def plot_wigner(wig_or_out, z=np.inf, p_units='um', s_units='nm', x_lim=(None,No
         # print(max_spectrum*autoscale)
         # print(spectrum)
         idx_s = np.where(spec > max_spectrum*autoscale)[0]
-        
+
         x_lim = [ power_scale[idx_p[0]], power_scale[idx_p[-1]] ]
         y_lim = [ spec_scale[idx_s[0]], spec_scale[idx_s[-1]] ]
-        
+
         x_lim = np.array(x_lim)
         y_lim = np.array(y_lim)
         x_lim.sort()
         y_lim.sort()
-    
+
     # axScatter.set_xlim(x_lim[0], x_lim[1])
     # axScatter.set_ylim(y_lim[0], y_lim[1])
     axHistx.set_xlim(x_lim[0], x_lim[1])
     axHisty.set_ylim(y_lim[0], y_lim[1])
-    
+
     if savefig != False:
         if savefig == True:
             savefig = 'png'
@@ -2493,7 +2504,7 @@ def plot_wigner(wig_or_out, z=np.inf, p_units='um', s_units='nm', x_lim=(None,No
             fig.savefig(W.filePath + '_wig_' + str(W.z) + 'm.' + str(savefig), format=savefig)
 
     plt.draw()
-    
+
     if showfig == True:
         dir_lst = W.filePath.split(os.path.sep)
         dir = os.path.sep.join(dir_lst[0:-1]) + os.path.sep
@@ -2501,7 +2512,7 @@ def plot_wigner(wig_or_out, z=np.inf, p_units='um', s_units='nm', x_lim=(None,No
         plt.show()
     else:
         plt.close('all')
-        
+
 
 '''
 tmp for HXRSS
@@ -2672,7 +2683,7 @@ def plot_dfl_waistscan(sc_res, fig_name=None, showfig=True, savefig=0, debug=1):
 def plot_trf(trf, mode='tr', autoscale=0, showfig=True, savefig=None):
     '''
     plots TransferFunction() object,
-    mode: 
+    mode:
         'tr' - transmission
         'ref' - reflection
     autoscale = scale down to several FWHMma in frequency and several bumps in time
@@ -2680,62 +2691,62 @@ def plot_trf(trf, mode='tr', autoscale=0, showfig=True, savefig=None):
     savefig - path to save png (if any)
     '''
     n_width = 8
-    
+
     l = len(trf.k)
     L = 2*pi / (trf.k[1] - trf.k[0])
     trf_s_td = np.linspace(0, -L, l) * 1e6
     trf_s_fd = trf.ev()
     #trf_s_fd = trf.k
-    
+
     if autoscale:
         trf_s_fd_xlim = np.array([trf.mid_k - n_width*trf.dk, trf.mid_k + n_width*trf.dk])
         trf_s_fd_xlim = h_eV_s*speed_of_light / (2*pi / trf_s_fd_xlim)
         trf_s_fd_xlim = np.sort(trf_s_fd_xlim)
-    
+
     if mode == 'tr':
         trf_fd = deepcopy(trf.tr)
     elif mode == 'ref':
         trf_fd = deepcopy(trf.ref)
     else:
         raise ValueError('mode argument should be "tr" or "ref"')
-    
+
     trf_fd /= abs(trf_s_td[-1]) / l
     trf_td = np.fft.ifft(np.fft.fftshift(trf_fd))
     trf_td = abs(trf_td)**2
-    
+
     # if hasattr(trf,'cryst'):
     try:
         title = trf.cryst.lattice.element_name + ' ' + str(trf.cryst.ref_idx) + ' ' + mode
     except:
         title = ''
-    
+
     trf_fig = plt.figure('Filter '+title)
     trf_fig.set_size_inches((9, 11), forward=True)
     if title != '':
         trf_fig.suptitle(title)
-    
+
     ax_fd_abs = trf_fig.add_subplot(3, 1, 1)
     ax_fd_abs.clear()
     ax_fd_ang = trf_fig.add_subplot(3, 1, 2, sharex=ax_fd_abs)
     ax_fd_ang.clear()
     ax_td = trf_fig.add_subplot(3, 1, 3)
     ax_td.clear()
-    
+
     trf_fig.subplots_adjust(hspace=0)
     trf_fig.subplots_adjust(top=0.95, bottom=0.2, right=0.85, left=0.15)
-    
+
     ax_fd_abs.plot(trf_s_fd, np.abs(trf.tr),'k')
     ax_fd_ang.plot(trf_s_fd, np.angle(trf.tr),'g')
-    
+
     ax_td.semilogy(trf_s_td, trf_td)
-    
+
     ax_fd_abs.set_ylabel('amplitude')
     ax_fd_ang.set_ylabel('phase')
     ax_fd_ang.set_xlabel('ph.energy')
-    
+
     ax_td.set_ylabel('impulse responce (power)')
     ax_td.set_xlabel('s [um]')
-    
+
     ax_fd_abs.axis('tight')
     ax_fd_abs.set_ylim([0, 1])
     ax_fd_ang.set_ylim([-np.pi, np.pi])
@@ -2745,38 +2756,37 @@ def plot_trf(trf, mode='tr', autoscale=0, showfig=True, savefig=None):
         ax_td.set_xlim(-n_width*pi / trf.dk * 1e6, 0)
         idx = np.argwhere(trf_s_td>-n_width*pi / trf.dk * 1e6)[-1]
         ax_td.set_ylim(np.amin(trf_td[1:idx]), np.amax(trf_td[1:idx]))
-    
+
     ax_fd_abs.grid(True)
     ax_fd_ang.grid(True)
     ax_td.grid(True)
-    
+
     for label in ax_fd_abs.get_xticklabels():
         label.set_visible(False)
-    
+
     #ax_td.axis('tight')
-    
+
     pos1 = ax_td.get_position()  # get the original position
     pos2 = [pos1.x0 + 0, pos1.y0 - 0.1,  pos1.width / 1.0, pos1.height / 0.9]
     ax_td.set_position(pos2)
-    
+
     plt.draw()
     if savefig != None and savefig.__class__ == str:
         trf_fig.savefig(savefig, format='png')
     #    if savefig == True:
     #        savefig = 'png'
     #    fig.savefig(g.filePath + '_z_' + str(z) + 'm.' + str(savefig), format=savefig)
-    
+
     if showfig:
         plt.show()
     else:
         plt.close(trf_fig)
-        
 
 #def plot_stokes_values(S,fig=None,s_lin=0, norm=0, showfig=True, gw=1):
-#    
+#
 #    if type(S) != StokesParameters:
 #        raise ValueError('Not a StokesParameters object')
-#        
+#
 #    if size(S.sc) > 1:
 #        if fig == None:
 #            plt.figure('Stokes S')
@@ -2784,7 +2794,6 @@ def plot_trf(trf, mode='tr', autoscale=0, showfig=True, savefig=None):
 #            plt.figure(fig.number)
 #        plt.clf()
 #        sc = S.sc * 1e6
-#        
 #        if gw:
 #            S.s0 /= 1e9
 #            S.s1 /= 1e9
@@ -2794,11 +2803,11 @@ def plot_trf(trf, mode='tr', autoscale=0, showfig=True, savefig=None):
 #        else:
 #            plt.ylabel('$S_0$ [W]')
 #        plt.xlabel('s [$\mu$m]')
-#        
+#
 #        if s_lin:
 #            # plt.step(sc, np.sqrt(S.s1**2+S.s2**2), linewidth=2, where='mid',color=[0.5,0.5,0.5], linestyle='--')
 #            plt.step(sc, np.sqrt(S.s1**2+S.s2**2), linewidth=2, where='mid',color='m', linestyle='--')
-# 
+#
 #        plt.step(sc, S.s1, linewidth=2, where='mid',color='g')
 #        plt.step(sc, S.s2, linewidth=2, where='mid',color='r')
 #        plt.step(sc, S.s3, linewidth=2, where='mid',color='c')
@@ -2807,24 +2816,22 @@ def plot_trf(trf, mode='tr', autoscale=0, showfig=True, savefig=None):
 #        # plt.step(sc, S.s2, linewidth=2, where='mid',color='r')
 #        # plt.step(sc, S.s3, linewidth=2, where='mid',color='c')
 #        # plt.step(sc, S.s0, linewidth=2, where='mid',color='k')
-#        
 #        if s_lin:
 #            plt.legend(['$\sqrt{S_1^2+S_2^2}$','$S_1$','$S_2$','$S_3$','$S_0$'], loc='lower center', ncol=5, mode="expand", borderaxespad=0.5, frameon=1).get_frame().set_alpha(0.4)
 #        else:
 #            plt.legend(['$S_1$','$S_2$','$S_3$','$S_0$'], fontsize=13, ncol=4, loc='upper left', frameon=1).get_frame().set_alpha(0.4)
 ##            plt.legend(['$S_1$','$S_2$','$S_3$','$S_0$'], loc='lower center', ncol=5, mode="expand", borderaxespad=0.5, frameon=1).get_frame().set_alpha(0.4)
-#        
 #        if showfig:
 #            plt.show()
 #        else:
 #            plt.close()
-        
-        
+
+
 #def plot_stokes_angles(S,fig=None,showfig=True):
-#    
+#
 #    if type(S) != StokesParameters:
 #        raise ValueError('Not a StokesParameters object')
-#        
+#
 #    if size(S.sc) > 1:
 #        if fig == None:
 #            plt.figure('Stokes angles')
@@ -2842,7 +2849,6 @@ def plot_trf(trf, mode='tr', autoscale=0, showfig=True, savefig=None):
 #        plt.ylabel('[rad]')
 #        plt.ylim([-np.pi/2,np.pi/2])
 #        plt.xlim([np.amin(sc),np.amax(sc)])
-#        
 #        if showfig:
 #            plt.show()
 #        else:
@@ -2852,7 +2858,7 @@ def plot_trf(trf, mode='tr', autoscale=0, showfig=True, savefig=None):
 
 def plot_stokes_values(S, fig=None, s_lin=0, norm=0, showfig=True, gw=1, direction='z', plot_func='step'):
     import matplotlib
-    
+
     # if type(S) != StokesParameters:
         # raise ValueError('Not a StokesParameters object')
     if not isinstance(S,StokesParameters):
@@ -2866,8 +2872,6 @@ def plot_stokes_values(S, fig=None, s_lin=0, norm=0, showfig=True, gw=1, directi
     elif direction == 'y':
        sc = S.sc_y * 1e6
        Scp = S[0,:,0]
-    
-    
     if np.size(sc) > 1:
         if fig == None:
             plt.figure('Stokes S')
@@ -2877,7 +2881,6 @@ def plot_stokes_values(S, fig=None, s_lin=0, norm=0, showfig=True, gw=1, directi
         else:
             plt.figure(fig)
         plt.clf()
-        
         if gw:
             mult = 1e-9
             plt.ylabel('$S_0$ [GW]')
@@ -2885,9 +2888,8 @@ def plot_stokes_values(S, fig=None, s_lin=0, norm=0, showfig=True, gw=1, directi
             mult = 1
             plt.ylabel('$S_0$ [W]')
         plt.xlabel('s [$\mu$m]')
-        
         kwargs = {'linewidth':2}
-        
+
         if plot_func == 'step':
             plot_function = plt.step
             kwargs['where']='mid'
@@ -2895,12 +2897,10 @@ def plot_stokes_values(S, fig=None, s_lin=0, norm=0, showfig=True, gw=1, directi
             plot_function = plt.plot
         else:
             raise ValueError
-        
-        
+
         if s_lin:
             # plt.step(sc, np.sqrt(S.s1**2+S.s2**2), linewidth=2, where='mid',color=[0.5,0.5,0.5], linestyle='--')
             plot_function(sc, Scp.P_pol_l()*mult, linestyle='--', color='m', **kwargs)
- 
         plot_function(sc, Scp.s1*mult, color='g', **kwargs)
         plot_function(sc, Scp.s2*mult, color='r', **kwargs)
         plot_function(sc, Scp.s3*mult, color='c', **kwargs)
@@ -2909,7 +2909,7 @@ def plot_stokes_values(S, fig=None, s_lin=0, norm=0, showfig=True, gw=1, directi
         # plt.step(sc, S.s2, linewidth=2, where='mid',color='r')
         # plt.step(sc, S.s3, linewidth=2, where='mid',color='c')
         # plt.step(sc, S.s0, linewidth=2, where='mid',color='k')
-        
+
         if s_lin:
             plt.legend(['$\sqrt{S_1^2+S_2^2}$','$S_1$','$S_2$','$S_3$','$S_0$'], loc='lower center', ncol=5, mode="expand", borderaxespad=0.5, frameon=1).get_frame().set_alpha(0.4)
         else:
@@ -2920,9 +2920,7 @@ def plot_stokes_values(S, fig=None, s_lin=0, norm=0, showfig=True, gw=1, directi
             plt.show()
         else:
             plt.close('all')
-        
 def plot_stokes_angles(S, fig=None, showfig=True, direction='z', plot_func='scatter'):
-    
    # if type(S) != StokesParameters:
        # raise ValueError('Not a StokesParameters object')
     if direction == 'z':
@@ -2935,7 +2933,6 @@ def plot_stokes_angles(S, fig=None, showfig=True, direction='z', plot_func='scat
        sc = S.sc_y * 1e6
        Scp = S[0,:,0]
     # sc = S.sc * 1e6
-    
     if np.size(sc) > 1:
         if fig == None:
             plt.figure('Stokes angles')
@@ -2943,7 +2940,6 @@ def plot_stokes_angles(S, fig=None, showfig=True, direction='z', plot_func='scat
         else:
             plt.figure(fig.number)
         plt.clf()
-        
         kwargs = {'linewidth':2}
         if plot_func == 'scatter':
             psize = Scp.deg_pol_l()
@@ -2956,15 +2952,12 @@ def plot_stokes_angles(S, fig=None, showfig=True, direction='z', plot_func='scat
             plot_function = plt.plot
         else:
             raise ValueError
-        
         # plt.step(sc, S.chi(), sc, S.psi(),linewidth=2)
-        
+
         plot_function(sc, Scp.psi(),color='b',**kwargs)
         if plot_func == 'scatter':
             kwargs['s'] = Scp.deg_pol_c()
         plot_function(sc, Scp.chi(),color='g',**kwargs)
-        
-        
         # if scatter:
             # psize = Scp.P_pol()
             # psize /= np.amax(psize)
@@ -3021,43 +3014,39 @@ def plot_stokes_3d(stk_params, x_plane='max_slice', y_plane='max_slice', z_plane
     :param debug:
     :param kwargs:
     '''
-    
     if showfig == False and savefig == False:
         return
     #_logger.info('plotting stokes parameters')
     start_time = time.time()
-    
     cbax1_dir = kwargs.pop('cbax1_dir', 1)
-    
     ny_plots = 2
     # Plotting data
     fig = plt.figure(fig_name)
     fig.clf()
     fig.set_size_inches((5 * figsize, 3 * figsize), forward=True)
-    
     z, y, x = stk_params.s0.shape
     ax1 = fig.add_subplot(ny_plots, 3, 1)
     linear_plt = plot_stokes_sbfg_lin(ax1, stk_params, slice=z_plane, plane='z', cmap2d=cmap_lin, plot_title=None, x_label='x', y_label='y', text_present=text_present, interpolation=interpolation, normalization=normalization, result=1, **kwargs)
-    
+
     ax2 = fig.add_subplot(ny_plots, 3, 2, sharey=ax1)
     plot_stokes_sbfg_lin(ax2, stk_params, slice=x_plane, plane='x', cmap2d=cmap_lin, plot_title='Linear polarization', x_label='z', y_label='y', text_present=text_present, interpolation=interpolation, normalization=normalization, **kwargs)
-    
+
     ax3 = fig.add_subplot(ny_plots, 3, 3, sharex=ax2)
     plot_stokes_sbfg_lin(ax3, stk_params, slice=y_plane, plane='y', cmap2d=cmap_lin, plot_title=None, x_label='z', y_label='x', text_present=text_present, interpolation=interpolation, normalization=normalization, **kwargs)
-    
+
     ax4 = fig.add_subplot(ny_plots, 3, 4, sharex=ax1, sharey=ax1)
     circular_plt = plot_stokes_sbfg_circ(ax4, stk_params, slice=z_plane, plane='z', cmap=cmap_circ, plot_title=None, x_label='x', y_label='y', text_present=text_present, result=1, interpolation=interpolation, normalization=normalization, **kwargs)
-    
+
     ax5 = fig.add_subplot(ny_plots, 3, 5, sharex=ax2, sharey=ax2)
     plot_stokes_sbfg_circ(ax5, stk_params, slice=x_plane, plane='x', cmap=cmap_circ, plot_title='Circular polarization', x_label='z', y_label='y', text_present=text_present, interpolation=interpolation, normalization=normalization, **kwargs)
-    
+
     ax6 = fig.add_subplot(ny_plots, 3, 6, sharex=ax3, sharey=ax3)
     plot_stokes_sbfg_circ(ax6, stk_params, slice=y_plane, plane='y', cmap=cmap_circ, plot_title=None, x_label='z', y_label='x', text_present=text_present, interpolation=interpolation, normalization=normalization, **kwargs)
-    
-    
+
+
     if cbars:
         cbax1 = fig.add_axes([0.91, 0.56, 0.04, 0.321])
-        
+
         if cbax1_dir == 1:
             ph = np.ones((100,100))*np.linspace(1,-1,100)[:,np.newaxis]
             I = np.ones((100,100))*np.linspace(0,1,100)[np.newaxis,:]
@@ -3065,15 +3054,14 @@ def plot_stokes_3d(stk_params, x_plane='max_slice', y_plane='max_slice', z_plane
             plt.yticks(np.linspace(np.pi/2, -np.pi/2, 3),['$-\pi/2$','0','$\pi/2$'])#['0','$\pi/2$','$\pi$','$3\pi/2$','$2\pi$']
             cbax1.yaxis.set_label_position("right")
             cbax1.yaxis.tick_right()
-            cbax1.set_ylabel('$\psi$',fontsize='x-large')
+            cbax1.set_ylabel('$\psi$',fontsize=13)
             if normalization == 's0':
                 cbax1.set_xlabel('$ \sqrt{S_1^2+S_2^2} / S_0$',fontsize='large')
             elif normalization == 's0_max':
-                cbax1.set_xlabel('$ \sqrt{S_1^2+S_2^2} / max(S_0)$',fontsize='x-large')
+                cbax1.set_xlabel('$ \sqrt{S_1^2+S_2^2} / max(S_0)$',fontsize=13)
             else:
-                cbax1.set_xlabel('$ \sqrt{S_1^2+S_2^2}$',fontsize='x-large')
+                cbax1.set_xlabel('$ \sqrt{S_1^2+S_2^2}$',fontsize=13)
             cbax1.tick_params(axis='both', which='major', labelsize='large')
-        
         else:
             ph = np.ones((100,100))*np.linspace(1,-1,100)[np.newaxis,:]
             I = np.ones((100,100))*np.linspace(0,1,100)[:,np.newaxis]
@@ -3081,25 +3069,24 @@ def plot_stokes_3d(stk_params, x_plane='max_slice', y_plane='max_slice', z_plane
             plt.xticks(np.linspace(-np.pi/2, np.pi/2, 3),['$-\pi/2$','0','$\pi/2$'])#['0','$\pi/2$','$\pi$','$3\pi/2$','$2\pi$']
             cbax1.yaxis.set_label_position("right")
             cbax1.yaxis.tick_right()
-            cbax1.set_xlabel('$\psi$',fontsize='x-large')
+            cbax1.set_xlabel('$\psi$',fontsize=13)
             if normalization == 's0':
                 cbax1.set_ylabel('$ \sqrt{S_1^2+S_2^2} / S_0$',fontsize='large')
             elif normalization == 's0_max':
-                cbax1.set_ylabel('$ \sqrt{S_1^2+S_2^2} / max(S_0)$',fontsize='x-large')
+                cbax1.set_ylabel('$ \sqrt{S_1^2+S_2^2} / max(S_0)$',fontsize=13)
             else:
                 cbax1.set_ylabel('$ \sqrt{S_1^2+S_2^2}$')
             cbax1.tick_params(axis='both', which='major', labelsize='large')
-        
+
         cbax2 = fig.add_axes([0.91, 0.11, 0.04, 0.321])  # This is the position for the colorbar [x, y, width, height]
         cbar_circ_im = plt.colorbar(circular_plt, cax=cbax2)
         if normalization == 's0':
             cbax2.set_ylabel('$S_3 / S_0$')
         elif normalization == 's0_max':
-            cbax2.set_ylabel('$S_3 / max(S_0)$',fontsize='x-large')
+            cbax2.set_ylabel('$S_3 / max(S_0)$',fontsize=13)
         else:
-            cbax2.set_ylabel('S3',fontsize='x-large')
+            cbax2.set_ylabel('S3',fontsize=13)
         cbax2.tick_params(axis='both', which='major', labelsize='large')
-        
     fig.subplots_adjust(wspace=0.4, hspace=0.4)
     #_logger.info(ind_str + 'done in {:.2f} seconds'.format(time.time() - start_time))
     plt.draw()
@@ -3108,7 +3095,6 @@ def plot_stokes_3d(stk_params, x_plane='max_slice', y_plane='max_slice', z_plane
             savefig = 'png'
         _logger.debug(ind_str + 'saving figure')
         fig.savefig(savefig)
-    
     if showfig:
         #_logger.debug(ind_str + 'showing Stokes Parameters')
         plt.show()
@@ -3197,7 +3183,6 @@ def plot_stokes_sbfg_lin(ax, stk_params, slice, plane, cmap2d='brightwheel', plo
         norm = np.amax(stk_params.s0)
     else:
         raise ValueError('"normalization" should be in [None, "s0", "s0_max"]')
-        
     if swap_axes:
         lin_pol_plane = np.swapaxes((stk_params_plane.P_pol_l() / norm), 0, 1)
         psi_plane = np.swapaxes((2 * stk_params_plane.psi() / np.pi), 0, 1)
@@ -3209,9 +3194,9 @@ def plot_stokes_sbfg_lin(ax, stk_params, slice, plane, cmap2d='brightwheel', plo
     linear_plt = imshow2d(np.array([psi_plane, lin_pol_plane]), ax=ax, cmap2d=cmap2d, extent=extent,
                           interpolation=interpolation, aspect='auto', huevmin=-1, huevmax=1, lightvmin=0, lightvmax=1, origin='lower', **kwargs)
     if plot_title is not None:
-        ax.set_title(plot_title, fontsize='x-large')
-    ax.set_xlabel(x_label + ' [$\mu$m]',fontsize='x-large')
-    ax.set_ylabel(y_label + ' [$\mu$m]',fontsize='x-large')
+        ax.set_title(plot_title, fontsize=13)
+    ax.set_xlabel(x_label + ' [$\mu$m]',fontsize=13)
+    ax.set_ylabel(y_label + ' [$\mu$m]',fontsize=13)
     if text_present:
         # print(plane, slice_pos*1e6)
         dic = {'proj': 'projection', 'max_slice': 'slice at {:}={:.3f} $\mu$m'}
@@ -3243,10 +3228,9 @@ def plot_stokes_sbfg_circ(ax, stk_params, slice, plane, cmap='seismic', plot_tit
     :param kwargs:
     :return:
     '''
-    
     # Getting intersections of stk_params for ploting data
     z_max, y_max, x_max = np.unravel_index(stk_params.s0.argmax(), stk_params.s0.shape)  # getting max element position
-    
+
     if plane in ['x', 2]:
         swap_axes = True
         extent = [stk_params.sc_z[0]*1e6, stk_params.sc_z[-1]*1e6, stk_params.sc_y[0]*1e6, stk_params.sc_y[-1]*1e6]
@@ -3289,7 +3273,6 @@ def plot_stokes_sbfg_circ(ax, stk_params, slice, plane, cmap='seismic', plot_tit
     else:
         #_logger.error(ind_str + 'argument "plane" should be in ["x","y","z",0,1,2]')
         raise ValueError('argument "plane" should be in ["x","y","z",0,1,2]')
-    
     # Normalization
     if normalization is None:
         norm = 1
@@ -3299,26 +3282,23 @@ def plot_stokes_sbfg_circ(ax, stk_params, slice, plane, cmap='seismic', plot_tit
         norm = np.amax(stk_params.s0)
     else:
         raise ValueError('"normalization" should be in [None, "s0", "s0_max"]')
-        
     if swap_axes:
         s3_plane = np.swapaxes((stk_params_plane.s3 / norm), 0, 1)
     else:
         s3_plane = stk_params_plane.s3 / norm
-    
     m, n = s3_plane.shape
     circular_plt = ax.imshow(s3_plane, cmap=cmap, vmin=-1, vmax=1, interpolation=interpolation, aspect='auto',
                              extent=extent, origin='lower', **kwargs)
     if plot_title is not None:
-        ax.set_title(plot_title, fontsize='x-large')
-    ax.set_xlabel(x_label + ' [$\mu$m]',fontsize='x-large')
-    ax.set_ylabel(y_label + ' [$\mu$m]',fontsize='x-large')
+        ax.set_title(plot_title, fontsize=13)
+    ax.set_xlabel(x_label + ' [$\mu$m]',fontsize=13)
+    ax.set_ylabel(y_label + ' [$\mu$m]',fontsize=13)
     if text_present:
         dic = {'proj': 'projection', 'max_slice': 'slice at {:}={:.3f} $\mu$m (max int)'}
         ax.text(0.97, 0.97, dic.get(slice, 'slice at {:}={:.3f} $\mu$m').format(plane, slice_pos*1e6), horizontalalignment='right',
                   verticalalignment='top', transform=ax.transAxes, fontsize='large')
     if result:
         return circular_plt
-        
 '''
     scheduled for removal
 '''
@@ -3441,7 +3421,7 @@ def gauss_fit(X, Y):
 
 #def fwhm3(valuelist, height=0.5, peakpos=-1, total=1):
 #    """calculates the full width at half maximum (fwhm) of some curve.
-#    the function will return the fwhm with sub-pixel interpolation. 
+#    the function will return the fwhm with sub-pixel interpolation.
 #    It will start at the maximum position and 'walk' left and right until it approaches the half values.
 #    if total==1, it will start at the edges and 'walk' towards peak until it approaches the half values.
 #    INPUT:
@@ -3449,7 +3429,7 @@ def gauss_fit(X, Y):
 #    OPTIONAL INPUT:
 #    -peakpos: position of the peak to examine (list index)
 #    the global maximum will be used if omitted.
-#    if total = 1 - 
+#    if total = 1 -
 #    OUTPUT:
 #    -fwhm (value)
 #    """
@@ -3501,7 +3481,7 @@ def gauss_fit(X, Y):
 #            # calculate the width
 #            width = p2interp - p1interp
 #        # print(p1interp, p2interp)
-#            
+#
 #    return (peakpos, width, np.array([ind1, ind2]))
 
     # ax_size_l = ax_size_t.twinx() #longitudinal size

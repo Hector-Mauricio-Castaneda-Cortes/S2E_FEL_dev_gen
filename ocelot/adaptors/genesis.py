@@ -18,6 +18,7 @@ import ocelot.utils.reswake as w
 from ocelot.utils.launcher import *
 from ocelot.common.math_op import *
 from ocelot.common.globals import *  # import of constants like "h_eV_s" and "speed_of_light"
+import subprocess
 
 import math
 import time #HMCC
@@ -177,6 +178,127 @@ inputTemplate = "\
  itram64 = __ITRAM64__\n\
  itram65 = __ITRAM65__\n\
  itram66 = __ITRAM66__\n\
+__OUTPUTFILE__\n\
+__BEAMFILE__\n\
+__PARTFILE__\n\
+__FIELDFILE__\n\
+__RADFILE__\n\
+__DISTFILE__\n\
+__MAGFILE__\n\
+ filetype ='ORIGINAL'\n\
+ $end\n"
+ 
+inputTemplate_betamatch = "\
+ $newrun \n\
+ aw0   =  __AW0__ \n\
+ xkx   =  __XKX__\n\
+ xky   =  __XKY__\n\
+ wcoefz =  __WCOEFZ__\n\
+ xlamd =  __XLAMD__\n\
+ fbess0 =  __FBESS0__\n\
+ delaw =  __DELAW__\n\
+ iertyp =  __IERTYP__\n\
+ iwityp =  __IWITYP__\n\
+ awd   =  __AWD__ \n\
+ awx   =  __AWX__\n\
+ awy   =  __AWY__\n\
+ iseed =  __ISEED__\n\
+ npart =  __NPART__\n\
+ gamma0 =  __GAMMA0__\n\
+ delgam =  __DELGAM__\n\
+ rxbeam =  __RXBEAM__\n\
+ rybeam =  __RYBEAM__\n\
+ alphax = __ALPHAX__\n\
+ alphay = __ALPHAY__\n\
+ emitx =  __EMITX__\n\
+ emity =  __EMITY__\n\
+ xbeam =  __XBEAM__\n\
+ ybeam =  __YBEAM__\n\
+ pxbeam =  __PXBEAM__\n\
+ pybeam =  __PYBEAM__\n\
+ conditx =  __CONDITX__\n\
+ condity =  __CONDITY__\n\
+ bunch =  __BUNCH__\n\
+ bunchphase =  __BUNCHPHASE__\n\
+ emod =  __EMOD__\n\
+ emodphase =  __EMODPHASE__\n\
+ xlamds =  __XLAMDS__\n\
+ prad0 =  __PRAD0__\n\
+ zrayl =  __ZRAYL__\n\
+ zwaist =  __ZWAIST__\n\
+ ncar  =  __NCAR__\n\
+ lbc   =  __LBC__\n\
+ rmax0 =  __RMAX0__\n\
+ dgrid =  __DGRID__\n\
+ nscr  =  __NSCR__\n\
+ nscz  =  __NSCZ__\n\
+ nptr  =   __NPTR__\n\
+ nwig  =   __NWIG__\n\
+ zsep  =   __ZSEP__\n\
+ delz  =   __DELZ__\n\
+ nsec  =   __NSEC__\n\
+ iorb  =   __IORB__\n\
+ zstop =   __ZSTOP__\n\
+ magin =   __MAGIN__\n\
+ magout =   __MAGOUT__\n\
+ quadf =   __QUADF__\n\
+ quadd =   __QUADD__\n\
+ fl    =  __FL__\n\
+ dl    =  __DL__\n\
+ drl   =  __DRL__\n\
+ f1st  =  __F1ST__\n\
+ qfdx  =  __QFDX__\n\
+ qfdy  =  __QFDY__\n\
+ solen =  __SOLEN__\n\
+ sl    =  __SL__\n\
+ ildgam =  __ILDGAM__\n\
+ ildpsi =  __ILDPSI__\n\
+ ildx  =  __ILDX__\n\
+ ildy  =  __ILDY__\n\
+ ildpx =  __ILDPX__\n\
+ ildpy =  __ILDPY__\n\
+ itgaus =  __ITGAUS__\n\
+ nbins =    __NBINS__\n\
+ igamgaus =  __IGAMGAUS__\n\
+ lout  = __LOUT__\n\
+ iphsty =  __IPHSTY__\n\
+ ishsty =  __ISHSTY__\n\
+ ippart =  __IPPART__\n\
+ ispart =  __ISPART__\n\
+ ipradi =  __IPRADI__\n\
+ isradi =  __ISRADI__\n\
+ idump =  __IDUMP__\n\
+ iotail = __IOTAIL__\n\
+ nharm = __NHARM__\n\
+ curpeak =  __CURPEAK__\n\
+ curlen =  __CURLEN__\n\
+ ntail = __NTAIL__\n\
+ nslice = __NSLICE__\n\
+ shotnoise = __SHOTNOISE__\n\
+ isntyp =  __ISNTYP__\n\
+ iall  =  __IALL__\n\
+ __ITDP__\n\
+ ipseed =   __IPSEED__\n\
+ iscan =  __ISCAN__\n\
+ nscan =  __NSCAN__\n\
+ svar  =  __SVAR__\n\
+ isravg =    __ISRAVG__\n\
+ isrsig =    __ISRSIG__\n\
+ cuttail = __CUTTAIL__\n\
+ eloss =  __ELOSS__\n\
+ version =  __VERSION__\n\
+ ndcut =  __NDCUT__\n\
+ idmpfld =    __IDMPFLD__\n\
+ idmppar =    __IDMPPAR__\n\
+ ilog  =  __ILOG__\n\
+ ffspec =  __FFSPEC__\n\
+ convharm =    __CONVHARM__\n\
+ ibfield =  __IBFIELD__\n\
+ imagl =  __IMAGL__\n\
+ idril =  __IDRIL__\n\
+ alignradf =  __ALIGNRADF__\n\
+ offsetradf =  __OFFSETRADF__\n\
+ multconv =  __MULTCONV__\n\
 __OUTPUTFILE__\n\
 __BEAMFILE__\n\
 __PARTFILE__\n\
@@ -426,12 +548,16 @@ class GenesisInput:
         self.run_dir = None  # directory to run simulation in
         self.exp_dir = None  # if run_dir==None, it is created based on exp_dir
   
-
-        self.inp_txt = inputTemplate
+        if self.betamatch== False:
+            self.inp_txt = inputTemplate
+        else:
+            self.inp_txt = inputTemplate_betamatch
 
     def input(self):
-
-        inp_txt = deepcopy(self.inp_txt)
+        if self.betamatch==True:
+          inp_txt = deepcopy(inputTemplate_betamatch)
+        else:
+          inp_txt = deepcopy(self.inp_txt)
 
         if self.type == 'steady':
             # inp_txt = inp_txt.replace("__SHOTNOISE__", "itdp  =    0")
@@ -481,46 +607,8 @@ class GenesisInput:
             # inp_txt = inp_txt.replace("__TRAMA__\n", "")
         # else:
             # inp_txt = inp_txt.replace("__TRAMA__\n", "")
-        if (self.betamatch == True):  # HMCC
-            inp_txt=inp_txt.replace("iharmsc = __IHARMSC__\n", '')
-            inp_txt=inp_txt.replace("iallharm = __IALLHARM__\n",'')
-            inp_txt=inp_txt.replace("trama = __TRAMA__\n",'')
-            inp_txt=inp_txt.replace("itram11 = __ITRAM11__\n",'')
-            inp_txt=inp_txt.replace("itram12 = __ITRAM12__\n",'')
-            inp_txt=inp_txt.replace("itram13 = __ITRAM13__\n",'')
-            inp_txt=inp_txt.replace("itram14 = __ITRAM14__\n",'')
-            inp_txt=inp_txt.replace("itram15 = __ITRAM15__\n",'')
-            inp_txt=inp_txt.replace("itram16 = __ITRAM16__\n",'')
-            inp_txt=inp_txt.replace("itram21 = __ITRAM21__\n",'')
-            inp_txt=inp_txt.replace("itram22 = __ITRAM22__\n",'')
-            inp_txt=inp_txt.replace("itram23 = __ITRAM23__\n",'')
-            inp_txt=inp_txt.replace("itram24 = __ITRAM24__\n",'')
-            inp_txt=inp_txt.replace("itram25 = __ITRAM25__\n",'')
-            inp_txt=inp_txt.replace("itram26 = __ITRAM26__\n",'')
-            inp_txt=inp_txt.replace("itram31 = __ITRAM31__\n",'')
-            inp_txt=inp_txt.replace("itram32 = __ITRAM32__\n",'')
-            inp_txt=inp_txt.replace("itram33 = __ITRAM33__\n",'')
-            inp_txt=inp_txt.replace("itram34 = __ITRAM34__\n",'')
-            inp_txt=inp_txt.replace("itram35 = __ITRAM35__\n",'')
-            inp_txt=inp_txt.replace("itram36 = __ITRAM36__\n",'')
-            inp_txt=inp_txt.replace("itram41 = __ITRAM41__\n",'')
-            inp_txt=inp_txt.replace("itram42 = __ITRAM42__\n",'')
-            inp_txt=inp_txt.replace("itram43 = __ITRAM43__\n",'')
-            inp_txt=inp_txt.replace("itram44 = __ITRAM44__\n",'')
-            inp_txt=inp_txt.replace("itram45 = __ITRAM45__\n",'')
-            inp_txt=inp_txt.replace("itram46 = __ITRAM46__\n",'')
-            inp_txt=inp_txt.replace("itram51 = __ITRAM51__\n",'')
-            inp_txt=inp_txt.replace("itram52 = __ITRAM52__\n",'')
-            inp_txt=inp_txt.replace("itram53 = __ITRAM53__\n",'')
-            inp_txt=inp_txt.replace("itram54 = __ITRAM54__\n",'')
-            inp_txt=inp_txt.replace("itram55 = __ITRAM55__\n",'')
-            inp_txt=inp_txt.replace("itram56 = __ITRAM56__\n",'')
-            inp_txt=inp_txt.replace("itram61 = __ITRAM61__\n",'')
-            inp_txt=inp_txt.replace("itram62 = __ITRAM62__\n",'')
-            inp_txt=inp_txt.replace("itram63 = __ITRAM63__\n",'')
-            inp_txt=inp_txt.replace("itram64 = __ITRAM64__\n",'')
-            inp_txt=inp_txt.replace("itram65 = __ITRAM65__\n",'')
-            inp_txt=inp_txt.replace("itram66 = __ITRAM66__\n", '')  # HMCC
+        #if (self.betamatch == True):  # HMCC
+            
             #for i_tr in self.__dict__.keys():  # HMCC
             #    if i_tr.startswith('itram'):  # HMCC
             #        inp_txt = inp_txt.replace("__" + str(i_tr).upper() + "__", "")  # HMCC#

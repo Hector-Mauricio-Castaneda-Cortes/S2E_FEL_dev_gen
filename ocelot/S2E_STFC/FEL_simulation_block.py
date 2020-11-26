@@ -46,6 +46,7 @@ import matplotlib.pyplot as plt
 import os,sys, errno, shutil
 import time
 from scipy.special import jv
+import subprocess
 
 
 class FEL_simulation_block(object):
@@ -152,6 +153,8 @@ class FEL_simulation_block(object):
                     elif((splitLine[0].startswith('magin')) and (splitLine[0].endswith('file'))):
                         val_attr = str(splitLine[-1].replace('=',""))
                     elif (splitLine[0].startswith('partfile')) or ((splitLine[0].startswith('fieldfile'))):
+                        continue
+                    elif (splitLine[0].find('wcoef')!=-1):
                         continue
                     else:
                         val_attr = float(splitLine[-1].replace('=',""))
@@ -299,7 +302,8 @@ class FEL_simulation_block(object):
             inp0.partfile='run.0.inp.dpa'
 
         try:
-            os.system('betamatch < beta_input_file.in')
+            returned_value = subprocess.call("betamatch < beta_input_file.in", shell=True)
+            #os.system('betamatch < beta_input_file.in')
         except:
             print('Betamatch did not work')
 
@@ -317,9 +321,9 @@ class FEL_simulation_block(object):
                 #for params2 in A_params:
                 #    setattr(inp0, params, getattr(inp2, params))
                 #break
-        #os.remove(f_path+'/beta_input_file.in')
-        #os.remove(f_path+'/TEMPLATE.IN')
-        #os.remove(f_path+'/mod_file.in')
+        os.remove(f_path+'/beta_input_file.in')
+        os.remove(f_path+'/TEMPLATE.IN')
+        os.remove(f_path+'/mod_file.in')
         setattr(self,'gen_file',file_or)
         return inp0
 
@@ -1066,3 +1070,44 @@ class FEL_simulation_block(object):
             plt.savefig(self.file_pout+'brightness_bw.png',dpi=120,bbox_inches='tight',format='png')
         if showfig:
             plt.show()
+
+    def get_lcoh(self,out,zOut):
+        #gen_data = h5py.File(filename, 'r')
+        P = out.p_int
+        phi = out.phi_mid
+        #P = np.array(gen_data.get('/Field/power'))
+        #phi=np.array(gen_data.get('/Field/phase-nearfield'))
+        #print phi
+        z= out.z
+        curr = out.I
+        sl = out.s[-1]
+        #z = np.array(gen_data.get('Lattice/z'))
+        #sl = np.array(gen_data.get('Global/slen'))
+
+            #get index
+        idx = np.where(z>=zOut)[0][0]
+        #idx = (np.abs(z-zOut)).argmin()
+
+        amplitude = np.sqrt(P[:,idx])
+            #print amplitude
+        len_fld = len(amplitude)
+        phase = phi[:,idx]
+        newz = np.arange(0.0, 3*sl, sl/len_fld)
+        ds = newz[1]-newz[0]
+
+            #make an empty array for holding the complex field
+        E1 = np.zeros([3*len_fld], dtype = complex)
+
+            #add the data to the middle of the array
+        E1[len_fld:2*len_fld] = amplitude*(np.cos(phase) + 1j*np.sin(phase))
+            # g is the coherence function
+        g = np.zeros(len(newz)-len_fld, dtype=complex)
+        for tau in range(1, len(newz)-len_fld):
+            E2 = np.zeros(len(newz), dtype=complex)
+            E2[tau:tau+len_fld]=E1[len_fld:2*len_fld]
+            #g[tau]= np.mean(np.conj(E1)*E2)/np.mean(np.conj(E1)*E1)
+            g[tau]= np.average(np.conj(E1)*E2)/(np.sqrt(np.average(np.conj(E1)*E1))*np.sqrt(np.average(np.conj(E2)*E2)))
+        #y = np.sum((g*np.conj(g)).real)*ds
+        #y = np.dot(g,np.conj(g)).real*ds
+        y=np.trapz(np.multiply(g,np.conj(g)),dx=ds)
+        return {'coh_func':g,'coh_len':np.real(y)}
