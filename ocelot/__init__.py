@@ -38,7 +38,7 @@ from ocelot.cpbd.io import *
 from ocelot.cpbd.sc import *
 from ocelot.cpbd.csr import *
 from ocelot.cpbd.wake3D import *
-#import ocelot.S2E_STFC.FEL_simulation_block
+from ocelot.S2E_STFC.FEL_simulation_block import *
 print('initializing ocelot...')
 logger = Logger()
 xrange=range

@@ -187,7 +187,7 @@ __DISTFILE__\n\
 __MAGFILE__\n\
  filetype ='ORIGINAL'\n\
  $end\n"
- 
+
 inputTemplate_betamatch = "\
  $newrun \n\
  aw0   =  __AW0__ \n\
@@ -315,13 +315,13 @@ __MAGFILE__\n\
 # pradh0 =  __PRADH0__\n\
 
 
-class GenesisInput:
+class GenesisInput(object):
     '''
     Genesis input files storage object
     '''
 
     def __init__(self):
-  
+
         # defaults
         self.betamatch = False  # HMCC betamatch flag
         self.stageid = None  # optional, handy with multi-stage scripts
@@ -479,7 +479,7 @@ class GenesisInput:
         self.imagl = 0.0  # The length of each bending magnet of the chicane. If the magnet length is set to zero but IDRIL is not the resulting beam line correspond to a simple drift of the length 5 times IDRIL
         self.idril = 0.0  # The length of the 5 drift lengths of the magnetic chicane (three between the magnets and one before and after the magnets).
 
-        
+
         if self.betamatch == False:
             self.iallharm = 0  # Setting the value to a non-zero value will also include all harmonics between 1 and NHARM
             self.iharmsc = 0  # setting to a non-zero value includes the coupling of the harmonic radiation back to the electron beam for a self-consistent model of harmonics. Enabling this feature will automatically include all harmonics by setting IALLHARM to one.
@@ -547,7 +547,7 @@ class GenesisInput:
 
         self.run_dir = None  # directory to run simulation in
         self.exp_dir = None  # if run_dir==None, it is created based on exp_dir
-  
+
         if self.betamatch== False:
             self.inp_txt = inputTemplate
         else:
@@ -608,7 +608,7 @@ class GenesisInput:
         # else:
             # inp_txt = inp_txt.replace("__TRAMA__\n", "")
         #if (self.betamatch == True):  # HMCC
-            
+
             #for i_tr in self.__dict__.keys():  # HMCC
             #    if i_tr.startswith('itram'):  # HMCC
             #        inp_txt = inp_txt.replace("__" + str(i_tr).upper() + "__", "")  # HMCC#
@@ -1279,7 +1279,7 @@ class RadiationField():
             if domain in ['s', 'k'] and domain is not domain_o_xy:
                 self.fft_xy(**kwargs)
 
-    def fft_z(self, method='mp', nthread=multiprocessing.cpu_count(), fftw_avail=0,debug=1):  # move to another domain ( time<->frequency )
+    def fft_z(self, method='np', nthread=multiprocessing.cpu_count(), fftw_avail=0,debug=1):  # move to another domain ( time<->frequency )
         #_logger.debug('calculating dfl fft_z from ' + self.domain_z + ' domain with ' + method)
         start = time.time()
         orig_domain = self.domain_z
@@ -1320,7 +1320,7 @@ class RadiationField():
         #    _logger.debug(ind_str + 'done in %.2f min' % (t_func / 60))
 
 
-    def fft_xy(self, method='mp', nthread=multiprocessing.cpu_count(), debug=1):  # move to another domain ( spce<->inverse_space )
+    def fft_xy(self, method='np', nthread=multiprocessing.cpu_count(), debug=1):  # move to another domain ( spce<->inverse_space )
         #_logger.debug('calculating fft_xy from ' + self.domain_xy + ' domain with ' + method)
         start = time.time()
         domain_orig = self.domain_xy
@@ -1637,7 +1637,7 @@ def run_genesis(inp, launcher, read_level=2, assembly_ver='pyt', i_aft='0',debug
         if inp.lat != None:
             if debug > 1:
                 print ('    writing ' + inp_file + '.lat')
-            open(inp_path + '.lat', 'w').write(generate_lattice(inp.lat, unit=inp.xlamd*inp.delz, energy=inp.gamma0 * m_e_GeV))
+            open(inp_path + '.lat', 'w').write(generate_lattice(inp.lat, unit=inp.xlamd*inp.delz, energy=inp.gamma0 * m_e_GeV,min_phsh = False))
             inp.latticefile = inp_file + '.lat'
 
     if inp.beamfile == None:
@@ -2014,11 +2014,14 @@ def get_genesis_launcher(launcher_program=None):
     if launcher_program != '':
          ##### HMCC #####
         if launcher_program  == "genesis2.0":
-            command_genesis = "mpiexec -np 25" + str(launcher.mpiParameters) + " "+launcher_program +' < tmp.cmd | tee log'
+            command_genesis = "mpiexec -np 32" + str(launcher.mpiParameters) + " "+launcher_program +' < tmp.cmd | tee log'
         elif launcher_program == "genesis3.2.1" :
-            command_genesis = "mpirun -np 25" + str(launcher.mpiParameters) +" " + launcher_program + " run.0.inp | tee log "
+            command_genesis = "mpiexec -np 40" + str(launcher.mpiParameters) +" " + launcher_program + " run.0.inp | tee log "
         elif launcher_program == "genesis_mpi" :
-            command_genesis = "mpiexec -np 25" + str(launcher.mpiParameters) +" /home/qfi29231/Genesis_code/Original_version/" +launcher_program + " < tmp.cmd | tee log "
+            command_genesis = "mpiexec -np 62" + str(
+                launcher.mpiParameters) + " " + os.path.join('/home/qfi29231',launcher_program) + ' < tmp.cmd | tee log'
+        elif launcher_program == 'steady_state':
+            command_genesis = "echo run.0.inp | genesis2.0"
         else:
             command_genesis = launcher_program
         launcher.program = command_genesis
@@ -2217,7 +2220,7 @@ def read_out_file(filePath, read_level=2, precision=float, debug=1):
 
     assert nSlice != 0, '.out is empty!'
 
-    assert(out.n[-1] - out.n[0]) == (len(out.n) - 1) * out('ishsty'), '.out is missing at least ' + str((out.n[-1] - out.n[0]) - (len(out.n) - 1) * out('ishsty')) + ' slices!'
+    #assert(out.n[-1] - out.n[0]) == (len(out.n) - 1) * out('ishsty'), '.out is missing at least ' + str((out.n[-1] - out.n[0]) - (len(out.n) - 1) * out('ishsty')) + ' slices!'
 
 
     if read_level == 2:
@@ -2762,7 +2765,7 @@ def dpa2edist(out, dpa, num_part=1e5, smear=1,debug=1):
     if out('nslice')!=0:#HMCC
         nslice=int(out('nslice')* out('ishsty'))
     else:#HMCC
-        nslice = int(out.nSlices * out('ishsty')) #HMCC uncomment
+        nslice = int(out.nSlices*out('ishsty')) #HMCC uncomment
     #nslice = int(out.nSlices * out('ishsty'))
     nbins = int(out('nbins'))
     xlamds = out('xlamds')
@@ -2782,15 +2785,15 @@ def dpa2edist(out, dpa, num_part=1e5, smear=1,debug=1):
     # if dpa.__class__!=GenesisParticles:
     # print('   could not read particle file')
 
-    m = np.arange(nslice)
-    m = np.tile(m, (nbins, npart / nbins, 1))
+    m = np.arange(int(nslice))
+    m = np.tile(m, (int(nbins), int(npart / nbins), 1))
     m = np.rollaxis(m, 2, 0)
     # print('shape_m='+str(shape(m)))
 
 
-    if smear:
+    if smear==True or smear==1:
         z = dpa.ph * xlamds / 2 / pi + m * xlamds * zsep + xlamds * zsep * (1 - np.random.random((nslice, nbins, int(npart / nbins))))
-    else:
+    elif smear==False or smear==0:
         z = dpa.ph * xlamds / 2 / pi + m * xlamds * zsep
 
     t = np.array(z / speed_of_light)
@@ -2911,7 +2914,10 @@ def read_edist_file(filePath, debug=1):
     edist.xp = np.array(dist_column_values['XPRIME'])
     edist.yp = np.array(dist_column_values['YPRIME'])
     edist.t = np.array(dist_column_values['T'])
-    edist.g = np.array(dist_column_values['GAMMA'])
+    if 'P' in dist_column_values.keys():
+        edist.g = np.array(dist_column_values['P'])
+    elif 'GAMMA' in dist_column_values.keys():
+        edist.g = np.array(dist_column_values['GAMMA'])
 
    # edist.x = np.flipud(edist.x) HMCC avoid the flipping of the current
    # edist.y = np.flipud(edist.y) HMCC avoid the flipping of the current
@@ -3875,7 +3881,7 @@ def generate_lattice(lattice, unit=1.0, energy=None, debug=False, min_phsh = Fal
                     add_slip = xlamds - slip % xlamds #free-space slippage to compensate with undulator K to bring it to integer number of wavelengths
                     K_rms_add = sqrt(2 * add_slip * gamma**2 / L) #compensational K
                     # driftLat += 'AD' + '    ' + str(e.Kx * np.sqrt(0.5)) + '   ' + str(round((pos - prevPos - prevLen) / unit, 2)) + '  ' + str(round(prevLen / unit, 2)) + '\n'
-                    driftLat += 'AD' + '    ' + str(K_rms_add) + '   ' + str(np.rint(L/unit)) + '  ' + str(round(prevLen / unit, 2)) + '\n'
+                    driftLat += 'AD' + '    ' + str(K_rms_add) + '   ' + str(int(L/unit)) + '  ' + str(round(prevLen / unit, 2)) + '\n'
                 else:
                     driftLat += 'AD' + '    ' + str(K_rms) + '   ' + str(np.rint(L/unit)) + '  ' + str(round(prevLen / unit, 2)) + '\n' #HMCC
             else:#HMCC in case the first element is not an undulator.
@@ -3892,7 +3898,7 @@ def generate_lattice(lattice, unit=1.0, energy=None, debug=False, min_phsh = Fal
             #k = energy/0.2998 * float(e.k1) *  ( e.l / unit - int(e.l / unit) )
             # k = float(energy) * float(e.k1) / e.l #*  (1 +  e.l / unit - int(e.l / unit) )
             # k = float(energy) * float(e.k1) * 0.2998 / e.l #*  (1 +  e.l / unit - int(e.l / unit) )
-            k = float(energy) * float(e.k1) / speed_of_light * 1e9
+            k = float(energy) * float(e.k1) / speed_of_light * 1.e9
             if debug:
                 print ('DEBUG' + str(e.k1) + ' ' + str(k) + ' ' + str(energy))
             quadLat += 'QF' + '    ' + str(k) + '   ' + str(round(e.l / unit, 2)) + '  ' + str(round((pos - prevPosQ - prevLenQ) / unit, 2)) + '\n'

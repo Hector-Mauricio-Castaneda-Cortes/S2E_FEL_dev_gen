@@ -983,7 +983,7 @@ def plot_gen_out_scanned_z(g, figsize=(10, 14), legend=True, fig_name=None, z=in
     return fig
 
 
-def plot_dfl(F, z_lim=[], xy_lim=[], figsize=25, cmap=def_cmap, legend=True, phase=False, far_field=False, freq_domain=False, fig_name=None, auto_zoom=False, column_3d=True, savefig=False, showfig=True, return_proj=False, log_scale=0, debug=1, vartype_dfl=complex64):#HMCC change figsize
+def plot_dfl(F, z_lim=[], xy_lim=[], figsize=8, cmap=def_cmap, legend=True, phase=False, far_field=False, freq_domain=False, fig_name=None, auto_zoom=False, column_3d=True, savefig=False, showfig=True, return_proj=False, log_scale=0, debug=1, vartype_dfl=complex64):#HMCC change figsize
     '''
     Plots dfl radiation object in 3d.
 
@@ -1041,7 +1041,7 @@ def plot_dfl(F, z_lim=[], xy_lim=[], figsize=25, cmap=def_cmap, legend=True, pha
         if freq_domain:
             if F.domain_z == 't':
                 F = dfl_fft_z(F, debug=debug)
-            z = F.scale_z() * 1e9
+            z = F.scale_z() * 1.e9
 
             F.fld = F.fld[::-1, :, :]
             z = z[::-1]
@@ -1144,7 +1144,7 @@ def plot_dfl(F, z_lim=[], xy_lim=[], figsize=25, cmap=def_cmap, legend=True, pha
 
     fig.clf()
     fig.set_size_inches(((3 + 2 * column_3d) * figsize, 3 * figsize), forward=True)
-    mpl.rcParams.update({'font.size':44})#HMCC
+    mpl.rcParams.update({'font.size':14})#HMCC
     # cmap = plt.get_cmap(def_cmap)  # jet inferno viridis #change to convenient
     cmap_ph = plt.get_cmap('hsv')
 
@@ -1161,18 +1161,18 @@ def plot_dfl(F, z_lim=[], xy_lim=[], figsize=25, cmap=def_cmap, legend=True, pha
     else:
         intplt = ax_int.pcolormesh(x, y, swapaxes(xy_proj, 1, 0), cmap=cmap)
     ax_int.set_title(xy_title)
-    ax_int.set_xlabel(r'' + x_label,fontsize=13)#HMCC
-    ax_int.set_ylabel(y_label,fontsize=13)#HMCC
-    ax_int.tick_params(axis='both', which='both',labelsize=13 )#HMCC
+    ax_int.set_xlabel(x_label)#HMCC
+    ax_int.set_ylabel(y_label)#HMCC
+    ax_int.tick_params(axis='both', which='both')#HMCC
     if size(z) > 1 and text_present:
-        ax_int.text(0.01, 0.01, r'$E_{p}$=%.2e J' % (E_pulse), horizontalalignment='left', verticalalignment='bottom', fontsize=12, color='white', transform=ax_int.transAxes)
+        ax_int.text(0.01, 0.01, r'$E_{p}$=%.2e J' % (E_pulse), horizontalalignment='left', verticalalignment='bottom', color='white', transform=ax_int.transAxes)
 
     if phase == True:
         ax_ph = fig.add_subplot(2, 2 + column_3d, 4 + column_3d, sharex=ax_int, sharey=ax_int)
         ax_ph.pcolormesh(x, y, swapaxes(xy_proj_ph, 1, 0), cmap=cmap_ph)
         ax_ph.axis([min(x), max(x), min(y), max(y)])
-        ax_ph.set_title('Phase',fontsize=13)
-        ax_ph.tick_params(axis='both', which='both',labelsize=13 )#HMCC
+        ax_ph.set_title('Phase')
+        ax_ph.tick_params(axis='both', which='both')#HMCC
 
     else:
         ax_z = fig.add_subplot(2, 2 + column_3d, 4 + column_3d)
@@ -1180,9 +1180,9 @@ def plot_dfl(F, z_lim=[], xy_lim=[], figsize=25, cmap=def_cmap, legend=True, pha
             ax_z.semilogy(z, z_proj, linewidth=1.5, color=z_color)
         else:
             ax_z.plot(z, z_proj, linewidth=1.5, color=z_color)
-        ax_z.set_title(z_title,fontsize=13)#HMCC
+        ax_z.set_title(z_title)#HMCC
         ax_z.set_ylim(ymin=0)
-        ax_z.tick_params(axis='both', which='both',labelsize=13 )#HMCC
+        ax_z.tick_params(axis='both', which='both')#HMCC
 
 
     ax_proj_x = fig.add_subplot(2, 2 + column_3d, 3 + column_3d, sharex=ax_int)
@@ -1208,14 +1208,14 @@ def plot_dfl(F, z_lim=[], xy_lim=[], figsize=25, cmap=def_cmap, legend=True, pha
         ax_proj_x.tick_params(axis='both', which='both',labelsize=13 )#HMCC
     if text_present:
         try:
-            ax_proj_x.text(0.95, 0.95, 'fwhm= \n' + str(round_sig(fwhm_x, 3)) + r' [' + unit_xy + ']\nrms= \n' + str(round_sig(rms_x, 3)) + r' [' + unit_xy + ']', horizontalalignment='right', verticalalignment='top', transform=ax_proj_x.transAxes,fontsize=13)#HMCC
+            ax_proj_x.text(0.95, 0.95, 'fwhm= \n' + str(round_sig(fwhm_x, 3)) + r' [' + unit_xy + ']\nrms= \n' + str(round_sig(rms_x, 3)) + r' [' + unit_xy + ']', horizontalalignment='right', verticalalignment='top', transform=ax_proj_x.transAxes)#HMCC
         except:
             pass
     ax_proj_x.set_ylim(ymin=0, ymax=1)
-    ax_proj_x.set_xlabel(x_label,fontsize=13)#HMCC
+    ax_proj_x.set_xlabel(x_label)#HMCC
 
     ax_proj_y = fig.add_subplot(2, 2 + column_3d, 2, sharey=ax_int)
-    ax_proj_y.set_title(y_title,fontsize=13) #HMCC
+    ax_proj_y.set_title(y_title) #HMCC
 
     if sum(y_line) != 0:
         y_line_f, rms_y = gauss_fit(y, y_line)  # fit with Gaussian, and return fitted function and rms
@@ -1237,12 +1237,12 @@ def plot_dfl(F, z_lim=[], xy_lim=[], figsize=25, cmap=def_cmap, legend=True, pha
 
     if text_present:
         try:
-            ax_proj_y.text(0.95, 0.95, 'fwhm= ' + str(round_sig(fwhm_y, 3)) + r' [' + unit_xy + ']\nrms= ' + str(round_sig(rms_y, 3)) + r' [' + unit_xy + ']', horizontalalignment='right', verticalalignment='top', transform=ax_proj_y.transAxes, fontsize=13)#HMCC
+            ax_proj_y.text(0.95, 0.95, 'fwhm= ' + str(round_sig(fwhm_y, 3)) + r' [' + unit_xy + ']\nrms= ' + str(round_sig(rms_y, 3)) + r' [' + unit_xy + ']', horizontalalignment='right', verticalalignment='top', transform=ax_proj_y.transAxes)#HMCC
         except:
             pass
     ax_proj_y.set_xlim(xmin=0, xmax=1)
-    ax_proj_y.set_ylabel(y_label,fontsize=13)#HMCC
-    ax_proj_y.tick_params(axis='both', which='both',labelsize=13 )#HMCC
+    ax_proj_y.set_ylabel(y_label)#HMCC
+    ax_proj_y.tick_params(axis='both', which='both')#HMCC
 
     # if log_scale:
         # ax_proj_x.set_yscale('log')
@@ -1269,10 +1269,10 @@ def plot_dfl(F, z_lim=[], xy_lim=[], figsize=25, cmap=def_cmap, legend=True, pha
             ax_proj_xz.pcolormesh(z, x, swapaxes(xz_proj, 1, 0), norm=colors.LogNorm(vmin=min_xz_proj, vmax=xz_proj.max()), cmap=cmap)
         else:
             ax_proj_xz.pcolormesh(z, x, swapaxes(xz_proj, 1, 0), cmap=cmap)
-        ax_proj_xz.set_title('Top view',fontsize=13)#HMCC
-        ax_proj_xz.set_xlabel(z_label,fontsize=13)#HMCC
-        ax_proj_xz.set_ylabel(x_label,fontsize=13) #HMCC
-        ax_proj_xz.tick_params(axis='both', which='both',labelsize=13 )#HMCC
+        #ax_proj_xz.set_title('Top view',fontsize=13)#HMCC
+        #ax_proj_xz.set_xlabel(z_label,fontsize=13)#HMCC
+        #ax_proj_xz.set_ylabel(x_label,fontsize=13) #HMCC
+        #ax_proj_xz.tick_params(axis='both', which='both',labelsize=13 )#HMCC
 
 
         ax_proj_yz = fig.add_subplot(2, 2 + column_3d, 3, sharey=ax_int, sharex=ax_proj_xz)
@@ -1280,10 +1280,10 @@ def plot_dfl(F, z_lim=[], xy_lim=[], figsize=25, cmap=def_cmap, legend=True, pha
             ax_proj_yz.pcolormesh(z, y, swapaxes(yz_proj, 1, 0), norm=colors.LogNorm(vmin=min_yz_proj, vmax=yz_proj.max()), cmap=cmap)
         else:
             ax_proj_yz.pcolormesh(z, y, swapaxes(yz_proj, 1, 0), cmap=cmap)
-        ax_proj_yz.set_title('Side view',fontsize=13)#HMCC
-        ax_proj_yz.set_xlabel(z_label,fontsize=13)#HMCC
-        ax_proj_yz.set_ylabel(y_label,fontsize=13)#HMCC
-        ax_proj_yz.tick_params(axis='both', which='both',labelsize=13 )#HMCC
+        ax_proj_yz.set_title('Side view')#HMCC
+        ax_proj_yz.set_xlabel(z_label)#HMCC
+        ax_proj_yz.set_ylabel(y_label)#HMCC
+        ax_proj_yz.tick_params(axis='both', which='both')#HMCC
 
     cbar = 0
     if cbar:
@@ -1302,12 +1302,17 @@ def plot_dfl(F, z_lim=[], xy_lim=[], figsize=25, cmap=def_cmap, legend=True, pha
         elif phase == False and z_lim == []:
             ax_z.set_xlim(z[nonzero(z_proj > max(z_proj) * 0.01)][[0, -1]])
             print ('      scaling xy to', size_xy)
+            ax_proj_xz = fig.add_subplot(2, 2 + column_3d, 6, sharex=ax_z)
+            if log_scale:
+                ax_proj_xz.pcolormesh(z, x, swapaxes(xz_proj, 1, 0), norm=colors.LogNorm(vmin=min_xz_proj, vmax=xz_proj.max()), cmap=cmap)
+            else:
+                ax_proj_xz.pcolormesh(z, x, swapaxes(xz_proj, 1, 0), cmap=cmap)
             ax_proj_xz.set_ylim([-size_xy, size_xy])
         elif column_3d == True:
             ax_proj_xz.set_ylim([-size_xy, size_xy])
         ax_int.axis('equal')
         ax_int.axis([-size_xy, size_xy, -size_xy, size_xy] )
-        ax_int.tick_params(axis='both', which='both',labelsize=13 )#HMCC)
+        ax_int.tick_params(axis='both', which='both')#HMCC)
         suffix += '_zmd'
     else:
         if column_3d == True:
@@ -2058,9 +2063,9 @@ def plot_dpa_bucket(dpa, slice_num=None, repeat=1, GeV=1, figsize=4, cmap=def_cm
 def plot_edist(edist, figsize=10, fig_name=None, savefig=False, showfig=True, scatter=False, plot_x_y=True, plot_xy_s=False, bins=(100, 100, 100, 100), flip_t=True, s_units='um', e_units='ev', cmin=0, e_offset=None, cmap=def_cmap, debug=1):
     import matplotlib as mpl #HMCC
 
-    font_s = 'medium'
-    font_t = 'medium'
-    font_t2 = 'medium'
+    font_s = 10
+    font_t = 10
+    font_t2 = 10
 
     if plot_xy_s==True:
         plot_x_y =False
@@ -2782,6 +2787,7 @@ def plot_trf(trf, mode='tr', autoscale=0, showfig=True, savefig=None):
     else:
         plt.close(trf_fig)
 
+
 #def plot_stokes_values(S,fig=None,s_lin=0, norm=0, showfig=True, gw=1):
 #
 #    if type(S) != StokesParameters:
@@ -2794,6 +2800,7 @@ def plot_trf(trf, mode='tr', autoscale=0, showfig=True, savefig=None):
 #            plt.figure(fig.number)
 #        plt.clf()
 #        sc = S.sc * 1e6
+#
 #        if gw:
 #            S.s0 /= 1e9
 #            S.s1 /= 1e9
@@ -2816,11 +2823,13 @@ def plot_trf(trf, mode='tr', autoscale=0, showfig=True, savefig=None):
 #        # plt.step(sc, S.s2, linewidth=2, where='mid',color='r')
 #        # plt.step(sc, S.s3, linewidth=2, where='mid',color='c')
 #        # plt.step(sc, S.s0, linewidth=2, where='mid',color='k')
+#
 #        if s_lin:
 #            plt.legend(['$\sqrt{S_1^2+S_2^2}$','$S_1$','$S_2$','$S_3$','$S_0$'], loc='lower center', ncol=5, mode="expand", borderaxespad=0.5, frameon=1).get_frame().set_alpha(0.4)
 #        else:
 #            plt.legend(['$S_1$','$S_2$','$S_3$','$S_0$'], fontsize=13, ncol=4, loc='upper left', frameon=1).get_frame().set_alpha(0.4)
 ##            plt.legend(['$S_1$','$S_2$','$S_3$','$S_0$'], loc='lower center', ncol=5, mode="expand", borderaxespad=0.5, frameon=1).get_frame().set_alpha(0.4)
+#
 #        if showfig:
 #            plt.show()
 #        else:
@@ -2849,6 +2858,7 @@ def plot_trf(trf, mode='tr', autoscale=0, showfig=True, savefig=None):
 #        plt.ylabel('[rad]')
 #        plt.ylim([-np.pi/2,np.pi/2])
 #        plt.xlim([np.amin(sc),np.amax(sc)])
+#
 #        if showfig:
 #            plt.show()
 #        else:
@@ -2872,6 +2882,8 @@ def plot_stokes_values(S, fig=None, s_lin=0, norm=0, showfig=True, gw=1, directi
     elif direction == 'y':
        sc = S.sc_y * 1e6
        Scp = S[0,:,0]
+
+
     if np.size(sc) > 1:
         if fig == None:
             plt.figure('Stokes S')
@@ -2881,6 +2893,7 @@ def plot_stokes_values(S, fig=None, s_lin=0, norm=0, showfig=True, gw=1, directi
         else:
             plt.figure(fig)
         plt.clf()
+
         if gw:
             mult = 1e-9
             plt.ylabel('$S_0$ [GW]')
@@ -2888,6 +2901,7 @@ def plot_stokes_values(S, fig=None, s_lin=0, norm=0, showfig=True, gw=1, directi
             mult = 1
             plt.ylabel('$S_0$ [W]')
         plt.xlabel('s [$\mu$m]')
+
         kwargs = {'linewidth':2}
 
         if plot_func == 'step':
@@ -2898,9 +2912,11 @@ def plot_stokes_values(S, fig=None, s_lin=0, norm=0, showfig=True, gw=1, directi
         else:
             raise ValueError
 
+
         if s_lin:
             # plt.step(sc, np.sqrt(S.s1**2+S.s2**2), linewidth=2, where='mid',color=[0.5,0.5,0.5], linestyle='--')
             plot_function(sc, Scp.P_pol_l()*mult, linestyle='--', color='m', **kwargs)
+
         plot_function(sc, Scp.s1*mult, color='g', **kwargs)
         plot_function(sc, Scp.s2*mult, color='r', **kwargs)
         plot_function(sc, Scp.s3*mult, color='c', **kwargs)
@@ -2920,7 +2936,9 @@ def plot_stokes_values(S, fig=None, s_lin=0, norm=0, showfig=True, gw=1, directi
             plt.show()
         else:
             plt.close('all')
+
 def plot_stokes_angles(S, fig=None, showfig=True, direction='z', plot_func='scatter'):
+
    # if type(S) != StokesParameters:
        # raise ValueError('Not a StokesParameters object')
     if direction == 'z':
@@ -2933,6 +2951,7 @@ def plot_stokes_angles(S, fig=None, showfig=True, direction='z', plot_func='scat
        sc = S.sc_y * 1e6
        Scp = S[0,:,0]
     # sc = S.sc * 1e6
+
     if np.size(sc) > 1:
         if fig == None:
             plt.figure('Stokes angles')
@@ -2940,6 +2959,7 @@ def plot_stokes_angles(S, fig=None, showfig=True, direction='z', plot_func='scat
         else:
             plt.figure(fig.number)
         plt.clf()
+
         kwargs = {'linewidth':2}
         if plot_func == 'scatter':
             psize = Scp.deg_pol_l()
@@ -2952,12 +2972,15 @@ def plot_stokes_angles(S, fig=None, showfig=True, direction='z', plot_func='scat
             plot_function = plt.plot
         else:
             raise ValueError
+
         # plt.step(sc, S.chi(), sc, S.psi(),linewidth=2)
 
         plot_function(sc, Scp.psi(),color='b',**kwargs)
         if plot_func == 'scatter':
             kwargs['s'] = Scp.deg_pol_c()
         plot_function(sc, Scp.chi(),color='g',**kwargs)
+
+
         # if scatter:
             # psize = Scp.P_pol()
             # psize /= np.amax(psize)
@@ -3014,16 +3037,20 @@ def plot_stokes_3d(stk_params, x_plane='max_slice', y_plane='max_slice', z_plane
     :param debug:
     :param kwargs:
     '''
+
     if showfig == False and savefig == False:
         return
     #_logger.info('plotting stokes parameters')
     start_time = time.time()
+
     cbax1_dir = kwargs.pop('cbax1_dir', 1)
+
     ny_plots = 2
     # Plotting data
     fig = plt.figure(fig_name)
     fig.clf()
     fig.set_size_inches((5 * figsize, 3 * figsize), forward=True)
+
     z, y, x = stk_params.s0.shape
     ax1 = fig.add_subplot(ny_plots, 3, 1)
     linear_plt = plot_stokes_sbfg_lin(ax1, stk_params, slice=z_plane, plane='z', cmap2d=cmap_lin, plot_title=None, x_label='x', y_label='y', text_present=text_present, interpolation=interpolation, normalization=normalization, result=1, **kwargs)
@@ -3062,6 +3089,7 @@ def plot_stokes_3d(stk_params, x_plane='max_slice', y_plane='max_slice', z_plane
             else:
                 cbax1.set_xlabel('$ \sqrt{S_1^2+S_2^2}$',fontsize=13)
             cbax1.tick_params(axis='both', which='major', labelsize='large')
+
         else:
             ph = np.ones((100,100))*np.linspace(1,-1,100)[np.newaxis,:]
             I = np.ones((100,100))*np.linspace(0,1,100)[:,np.newaxis]
@@ -3087,6 +3115,7 @@ def plot_stokes_3d(stk_params, x_plane='max_slice', y_plane='max_slice', z_plane
         else:
             cbax2.set_ylabel('S3',fontsize=13)
         cbax2.tick_params(axis='both', which='major', labelsize='large')
+
     fig.subplots_adjust(wspace=0.4, hspace=0.4)
     #_logger.info(ind_str + 'done in {:.2f} seconds'.format(time.time() - start_time))
     plt.draw()
@@ -3095,6 +3124,7 @@ def plot_stokes_3d(stk_params, x_plane='max_slice', y_plane='max_slice', z_plane
             savefig = 'png'
         _logger.debug(ind_str + 'saving figure')
         fig.savefig(savefig)
+
     if showfig:
         #_logger.debug(ind_str + 'showing Stokes Parameters')
         plt.show()
@@ -3183,6 +3213,7 @@ def plot_stokes_sbfg_lin(ax, stk_params, slice, plane, cmap2d='brightwheel', plo
         norm = np.amax(stk_params.s0)
     else:
         raise ValueError('"normalization" should be in [None, "s0", "s0_max"]')
+
     if swap_axes:
         lin_pol_plane = np.swapaxes((stk_params_plane.P_pol_l() / norm), 0, 1)
         psi_plane = np.swapaxes((2 * stk_params_plane.psi() / np.pi), 0, 1)
@@ -3228,6 +3259,7 @@ def plot_stokes_sbfg_circ(ax, stk_params, slice, plane, cmap='seismic', plot_tit
     :param kwargs:
     :return:
     '''
+
     # Getting intersections of stk_params for ploting data
     z_max, y_max, x_max = np.unravel_index(stk_params.s0.argmax(), stk_params.s0.shape)  # getting max element position
 
@@ -3273,6 +3305,7 @@ def plot_stokes_sbfg_circ(ax, stk_params, slice, plane, cmap='seismic', plot_tit
     else:
         #_logger.error(ind_str + 'argument "plane" should be in ["x","y","z",0,1,2]')
         raise ValueError('argument "plane" should be in ["x","y","z",0,1,2]')
+
     # Normalization
     if normalization is None:
         norm = 1
@@ -3282,10 +3315,12 @@ def plot_stokes_sbfg_circ(ax, stk_params, slice, plane, cmap='seismic', plot_tit
         norm = np.amax(stk_params.s0)
     else:
         raise ValueError('"normalization" should be in [None, "s0", "s0_max"]')
+
     if swap_axes:
         s3_plane = np.swapaxes((stk_params_plane.s3 / norm), 0, 1)
     else:
         s3_plane = stk_params_plane.s3 / norm
+
     m, n = s3_plane.shape
     circular_plt = ax.imshow(s3_plane, cmap=cmap, vmin=-1, vmax=1, interpolation=interpolation, aspect='auto',
                              extent=extent, origin='lower', **kwargs)
@@ -3299,6 +3334,7 @@ def plot_stokes_sbfg_circ(ax, stk_params, slice, plane, cmap='seismic', plot_tit
                   verticalalignment='top', transform=ax.transAxes, fontsize='large')
     if result:
         return circular_plt
+
 '''
     scheduled for removal
 '''
